@@ -284,6 +284,8 @@ struct TextToolTests {
         #expect(TextTools.polish("three highlights:\n1. i cooked\n2. maya visited") == "Three highlights:\n1. I cooked.\n2. Maya visited.")
         #expect(TextTools.polish("fine [[P]] then home") == "Fine. [[P]] Then home.")
         #expect(TextTools.polish("Ran 3.1 miles at 6:30 am") == "Ran 3.1 miles at 6:30 am.")
+        #expect(TextTools.polish("Ran at 6:30 AM. Back by 8pm, then 9 p.m. bed.") == "Ran at 6:30 am. Back by 8 pm, then 9 pm bed.")
+        #expect(TextTools.polish("I am fine at the AMC") == "I am fine at the AMC.")
     }
 
     @Test func tidyRemovesEmDashes() {

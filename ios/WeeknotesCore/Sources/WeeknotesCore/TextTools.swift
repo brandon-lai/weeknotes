@@ -123,8 +123,9 @@ public enum TextTools {
     /// sentence and list-item starts and a lone "i", and ends every sentence, list item and
     /// paragraph with punctuation. Never changes, adds or reorders a word.
     public static func polish(_ text: String) -> String {
+        let lowered = houseStyleTimes(text)
         var lines: [String] = []
-        for rawLine in text.components(separatedBy: "\n") {
+        for rawLine in lowered.components(separatedBy: "\n") {
             var tokens: [String] = []
             for token in rawTokens(rawLine) {
                 let bare = token.lowercased().trimmingCharacters(in: .punctuationCharacters)
@@ -182,5 +183,24 @@ public enum TextTools {
             out.append(result)
         }
         return out.joined(separator: "\n")
+    }
+
+    /// House style for times is "6:30 am" (PRD §8). Models write "6:30 AM", "6:30am", "6:30 a.m.".
+    /// A dot after "a.m." stays only when it ends the sentence.
+    static func houseStyleTimes(_ text: String) -> String {
+        var out = ""
+        var cursor = text.startIndex
+        for match in text.matches(of: /(\d)\s?([AaPp])\.?[Mm](\.?)(?![A-Za-z])/) {
+            out += text[cursor..<match.range.lowerBound]
+            out += "\(match.output.1) \(match.output.2.lowercased())m"
+            if !match.output.3.isEmpty {
+                let rest = text[match.range.upperBound...]
+                let next = rest.drop(while: { $0 == " " }).first
+                if next == nil || next?.isUppercase == true || rest.first == "\n" { out += "." }
+            }
+            cursor = match.range.upperBound
+        }
+        out += text[cursor...]
+        return out
     }
 }

@@ -79,8 +79,9 @@ public struct FormatValidator: Sendable {
         return .accepted
     }
 
-    /// Small connecting words formatting models like to slip in ("brunch on Sunday").
-    public static let connectingWords: Set<String> = ["on", "the", "a", "an", "to", "and", "of", "in", "at", "for", "it", "is", "was"]
+    /// Small words formatting models like to slip in to make speech "grammatical"
+    /// ("brunch on Sunday", "I ran 3 miles").
+    public static let connectingWords: Set<String> = ["on", "the", "a", "an", "to", "and", "of", "in", "at", "for", "it", "is", "was", "i", "we"]
 
     /// When the only problem is a few added connecting words, remove exactly those words from
     /// the output and return it (the validator then checks it again). Returns nil when the
