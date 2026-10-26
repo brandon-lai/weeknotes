@@ -94,7 +94,7 @@ public struct DictationPipeline: Sendable {
 
     /// Stages 4 and 5 for text that has already been through stages 1 to 3. The golden tests
     /// enter here. Markers become line breaks at the end.
-    public func format(_ stage3: String, vocabulary: [String]) async -> (text: String, engineID: String, fellBack: Bool, skipped: Bool) {
+    public func format(_ stage3: String, vocabulary: [String], convertMarkers: Bool = true) async -> (text: String, engineID: String, fellBack: Bool, skipped: Bool) {
         guard !stage3.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return ("", primary?.id ?? "none", false, false)
         }
@@ -109,7 +109,8 @@ public struct DictationPipeline: Sendable {
             fellBack = fellBack || attempt.fellBack
             skipped = skipped || attempt.skipped
         }
-        let text = TextTools.convertMarkers(pieces.joined())
+        let joined = pieces.joined()
+        let text = convertMarkers ? TextTools.convertMarkers(joined) : joined
         let engineID = engineIDs.allSatisfy({ $0 == engineIDs.first }) ? (engineIDs.first ?? "none") : engineIDs.joined(separator: "+")
         return (text, engineID, fellBack, skipped)
     }

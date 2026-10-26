@@ -21,7 +21,21 @@ public enum SpokenCommands {
     .map { Command(words: $0.0.split(separator: " ").map(String.init), output: $0.1) }
     .sorted { $0.words.count > $1.words.count }
 
-    public static func apply(_ words: [TimedWord], pauseThreshold: TimeInterval) -> String {
+    /// Words that begin a command phrase. Live dictation never splits a window right before one.
+    public static let commandStarters: Set<String> = Set(all.map { $0.words[0] })
+
+    public static func startsCommand(_ word: String) -> Bool {
+        commandStarters.contains(bare(word))
+    }
+
+    /// The spoken word ends a sentence-ending command ("period", "question mark", "full stop").
+    public static func isSentenceEndCommand(_ word: String) -> Bool {
+        ["period", "mark", "point", "stop"].contains(bare(word))
+    }
+
+    /// - Parameter keepTrailingMarkers: live dictation formats in pieces; a "new paragraph"
+    ///   at the end of one piece still separates it from the next.
+    public static func apply(_ words: [TimedWord], pauseThreshold: TimeInterval, keepTrailingMarkers: Bool = false) -> String {
         var tokens: [String] = []
         var i = 0
         while i < words.count {
@@ -41,7 +55,7 @@ public enum SpokenCommands {
             i += 1
         }
         // A trailing "new paragraph" has nothing to separate
-        while let last = tokens.last, TextTools.isMarker(last) { tokens.removeLast() }
+        while !keepTrailingMarkers, let last = tokens.last, TextTools.isMarker(last) { tokens.removeLast() }
         return tokens.joined(separator: " ")
     }
 

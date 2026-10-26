@@ -1,0 +1,595 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		C3CCDCB272F7D33A921FA567 /* WeeknotesCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2C9C836D7E1B8D6F1BF30755 /* WeeknotesCore */; };
+		63AEB3BFA695B3720D3E1F5D /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = E7C2E2EB5650CA77F9D96ED7 /* Supabase */; };
+		F03491012C3BCCDF32477D0B /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = 4A3C3959F28DB83DBDA69007 /* WhisperKit */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		201AF88AF0DFC4656A21B957 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3D4C91345015A4DD0A099400;
+			remoteInfo = Weeknotes;
+		};
+		BAF8B17C362D45210E8775D2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3D4C91345015A4DD0A099400;
+			remoteInfo = Weeknotes;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		81918909E83595C8F4212CCC /* Weeknotes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Weeknotes.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7AF768ADD8C1E79EC20DD3E8 /* WeeknotesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WeeknotesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		101C50A949C0A97306ECC805 /* WeeknotesUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WeeknotesUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		A149E01CD7C39A25FECF4729 /* Exceptions for "Weeknotes" folder in "Weeknotes" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+				Weeknotes.entitlements,
+			);
+			target = 3D4C91345015A4DD0A099400 /* Weeknotes */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		CE882751F8B3EE4485706ED4 /* Weeknotes */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A149E01CD7C39A25FECF4729 /* Exceptions for "Weeknotes" folder in "Weeknotes" target */,
+			);
+			path = Weeknotes;
+			sourceTree = "<group>";
+		};
+		24DFAD7E3B56719996E6F208 /* WeeknotesTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = WeeknotesTests;
+			sourceTree = "<group>";
+		};
+		0F4A94EC4B20B287560995E2 /* WeeknotesUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = WeeknotesUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		0248D6DB510EB0F7E9C05175 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C3CCDCB272F7D33A921FA567 /* WeeknotesCore in Frameworks */,
+				63AEB3BFA695B3720D3E1F5D /* Supabase in Frameworks */,
+				F03491012C3BCCDF32477D0B /* WhisperKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		11FD6C55B0481B477DE8A56A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F350241693DFA86BB004B4BA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		8D3FC6DB5D0827F168A73277 = {
+			isa = PBXGroup;
+			children = (
+				CE882751F8B3EE4485706ED4 /* Weeknotes */,
+				24DFAD7E3B56719996E6F208 /* WeeknotesTests */,
+				0F4A94EC4B20B287560995E2 /* WeeknotesUITests */,
+				1BADDC1D73C1A20F347483E1 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		1BADDC1D73C1A20F347483E1 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				81918909E83595C8F4212CCC /* Weeknotes.app */,
+				7AF768ADD8C1E79EC20DD3E8 /* WeeknotesTests.xctest */,
+				101C50A949C0A97306ECC805 /* WeeknotesUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		3D4C91345015A4DD0A099400 /* Weeknotes */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = ED5880B68D8ED85519469A74 /* Build configuration list for PBXNativeTarget "Weeknotes" */;
+			buildPhases = (
+				DA10D9DD089DF2AFEBC5ED5A /* Sources */,
+				0248D6DB510EB0F7E9C05175 /* Frameworks */,
+				82A968CB662751220D4DFE2D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				CE882751F8B3EE4485706ED4 /* Weeknotes */,
+			);
+			name = Weeknotes;
+			packageProductDependencies = (
+				2C9C836D7E1B8D6F1BF30755 /* WeeknotesCore */,
+				E7C2E2EB5650CA77F9D96ED7 /* Supabase */,
+				4A3C3959F28DB83DBDA69007 /* WhisperKit */,
+			);
+			productName = Weeknotes;
+			productReference = 81918909E83595C8F4212CCC /* Weeknotes.app */;
+			productType = "com.apple.product-type.application";
+		};
+		9CA4B63375BBECC069794E56 /* WeeknotesTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8AEC74B9A920CA28364DA0BB /* Build configuration list for PBXNativeTarget "WeeknotesTests" */;
+			buildPhases = (
+				46CF75DBE0797FFB5004DC27 /* Sources */,
+				11FD6C55B0481B477DE8A56A /* Frameworks */,
+				3B84441BCA0E7364C487EEEF /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				47F10DB008E17E4D29D4E93B /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				24DFAD7E3B56719996E6F208 /* WeeknotesTests */,
+			);
+			name = WeeknotesTests;
+			packageProductDependencies = (
+			);
+			productName = WeeknotesTests;
+			productReference = 7AF768ADD8C1E79EC20DD3E8 /* WeeknotesTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		62BEB536D4D579C633487B10 /* WeeknotesUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9DB66422EC7052E4B524C534 /* Build configuration list for PBXNativeTarget "WeeknotesUITests" */;
+			buildPhases = (
+				FAFB2701C8A58372FF829DDB /* Sources */,
+				F350241693DFA86BB004B4BA /* Frameworks */,
+				2726865FD69AB5E7ECB58006 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				569AF182EE037FA33A929445 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				0F4A94EC4B20B287560995E2 /* WeeknotesUITests */,
+			);
+			name = WeeknotesUITests;
+			packageProductDependencies = (
+			);
+			productName = WeeknotesUITests;
+			productReference = 101C50A949C0A97306ECC805 /* WeeknotesUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		46F86FAA6BBF9AC94A7E4595 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2630;
+				LastUpgradeCheck = 2630;
+				TargetAttributes = {
+					3D4C91345015A4DD0A099400 = {
+						CreatedOnToolsVersion = 26.3;
+					};
+					9CA4B63375BBECC069794E56 = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = 3D4C91345015A4DD0A099400;
+					};
+					62BEB536D4D579C633487B10 = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = 3D4C91345015A4DD0A099400;
+					};
+				};
+			};
+			buildConfigurationList = B4448865DEAC1A50EE1EA400 /* Build configuration list for PBXProject "Weeknotes" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 8D3FC6DB5D0827F168A73277;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4A2381B11E94060630713172 /* XCLocalSwiftPackageReference "WeeknotesCore" */,
+				B63340068B41C13B6070EBAC /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				C1B3AEB3D8D53A3B6E9AFB4D /* XCRemoteSwiftPackageReference "WhisperKit" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 1BADDC1D73C1A20F347483E1 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				3D4C91345015A4DD0A099400 /* Weeknotes */,
+				9CA4B63375BBECC069794E56 /* WeeknotesTests */,
+				62BEB536D4D579C633487B10 /* WeeknotesUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		82A968CB662751220D4DFE2D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3B84441BCA0E7364C487EEEF /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2726865FD69AB5E7ECB58006 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		DA10D9DD089DF2AFEBC5ED5A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		46CF75DBE0797FFB5004DC27 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FAFB2701C8A58372FF829DDB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		47F10DB008E17E4D29D4E93B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3D4C91345015A4DD0A099400 /* Weeknotes */;
+			targetProxy = 201AF88AF0DFC4656A21B957 /* PBXContainerItemProxy */;
+		};
+		569AF182EE037FA33A929445 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3D4C91345015A4DD0A099400 /* Weeknotes */;
+			targetProxy = BAF8B17C362D45210E8775D2 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		FA9139DD8B03E3F922556BF8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		FFE2104CCFAB79205AC64460 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		72FB3ED29B4639D83EC5DB14 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Weeknotes/Weeknotes.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = KT2Y8F24DZ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Weeknotes/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Weeknotes;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
+				INFOPLIST_KEY_NSContactsUsageDescription = "Weeknotes checks your contacts for friends already on the app. Only scrambled (hashed) phone numbers leave your phone.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Weeknotes uses the microphone when you dictate an update or record a voice memo.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Weeknotes turns your dictation and voice memos into text on your phone.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.blai.weeknotes;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0";
+				SUPABASE_URL = "http://127.0.0.1:54321";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		191734982F22ABEBB64A1AE0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Weeknotes/Weeknotes.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = KT2Y8F24DZ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Weeknotes/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Weeknotes;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
+				INFOPLIST_KEY_NSContactsUsageDescription = "Weeknotes checks your contacts for friends already on the app. Only scrambled (hashed) phone numbers leave your phone.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Weeknotes uses the microphone when you dictate an update or record a voice memo.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Weeknotes turns your dictation and voice memos into text on your phone.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.blai.weeknotes;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPABASE_ANON_KEY = "";
+				SUPABASE_URL = "";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		0B9D7A058B3133F2CFB1D4A0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = KT2Y8F24DZ;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.blai.weeknotes.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Weeknotes.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Weeknotes";
+			};
+			name = Debug;
+		};
+		17BFBBF586B1A6F2699F7699 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = KT2Y8F24DZ;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.blai.weeknotes.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Weeknotes.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Weeknotes";
+			};
+			name = Release;
+		};
+		D26317A6E8AA03FE576C2B76 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = KT2Y8F24DZ;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.blai.weeknotes.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = Weeknotes;
+			};
+			name = Debug;
+		};
+		3D373E5EF8DC9AAAB8000E2B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = KT2Y8F24DZ;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.blai.weeknotes.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = Weeknotes;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		B4448865DEAC1A50EE1EA400 /* Build configuration list for PBXProject "Weeknotes" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FA9139DD8B03E3F922556BF8 /* Debug */,
+				FFE2104CCFAB79205AC64460 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		ED5880B68D8ED85519469A74 /* Build configuration list for PBXNativeTarget "Weeknotes" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				72FB3ED29B4639D83EC5DB14 /* Debug */,
+				191734982F22ABEBB64A1AE0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8AEC74B9A920CA28364DA0BB /* Build configuration list for PBXNativeTarget "WeeknotesTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0B9D7A058B3133F2CFB1D4A0 /* Debug */,
+				17BFBBF586B1A6F2699F7699 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		9DB66422EC7052E4B524C534 /* Build configuration list for PBXNativeTarget "WeeknotesUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D26317A6E8AA03FE576C2B76 /* Debug */,
+				3D373E5EF8DC9AAAB8000E2B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		4A2381B11E94060630713172 /* XCLocalSwiftPackageReference "WeeknotesCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = WeeknotesCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		B63340068B41C13B6070EBAC /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.55.5;
+			};
+		};
+		C1B3AEB3D8D53A3B6E9AFB4D /* XCRemoteSwiftPackageReference "WhisperKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/argmaxinc/WhisperKit.git";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 1.1.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		2C9C836D7E1B8D6F1BF30755 /* WeeknotesCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = WeeknotesCore;
+		};
+		E7C2E2EB5650CA77F9D96ED7 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B63340068B41C13B6070EBAC /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+		4A3C3959F28DB83DBDA69007 /* WhisperKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C1B3AEB3D8D53A3B6E9AFB4D /* XCRemoteSwiftPackageReference "WhisperKit" */;
+			productName = WhisperKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
+}
