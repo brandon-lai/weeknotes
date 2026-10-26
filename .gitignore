@@ -1,0 +1,22 @@
+# Secrets
+.env
+.env.*
+!.env.example
+supabase/.env
+supabase/functions/.env
+
+# Build output
+.DS_Store
+node_modules/
+.next/
+.build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.swiftpm/
+web/.vercel
+.vercel
+
+# Supabase local state
+supabase/.branches
+supabase/.temp

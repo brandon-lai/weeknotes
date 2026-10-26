@@ -1,0 +1,93 @@
+{
+  "vocabulary": [
+    "Maya",
+    "Jaylen",
+    "Priya"
+  ],
+  "cases": [
+    {
+      "id": 1,
+      "input": "um so this week was uh pretty pretty busy",
+      "expected": "So this week was pretty busy.",
+      "tests": "Fillers, stutter"
+    },
+    {
+      "id": 2,
+      "input": "we got dinner at seven actually eight",
+      "expected": "We got dinner at 8.",
+      "tests": "Backtrack"
+    },
+    {
+      "id": 3,
+      "input": "I went to the gym scratch that I went for a run",
+      "expected": "I went for a run.",
+      "tests": "Backtrack"
+    },
+    {
+      "id": 4,
+      "input": "we're doing brunch saturday no wait sunday",
+      "expected": "We're doing brunch Sunday.",
+      "tests": "Restatement"
+    },
+    {
+      "id": 5,
+      "input": "the movie was actually really good",
+      "expected": "The movie was actually really good.",
+      "tests": "Not a correction"
+    },
+    {
+      "id": 6,
+      "input": "I like the new place a lot",
+      "expected": "I like the new place a lot.",
+      "tests": "\"like\" kept"
+    },
+    {
+      "id": 7,
+      "input": "three highlights first I tried the new ramen place second Maya visited third I started running again",
+      "expected": "Three highlights:\n1. I tried the new ramen place.\n2. Maya visited.\n3. I started running again.",
+      "tests": "Numbered list"
+    },
+    {
+      "id": 8,
+      "input": "work was fine [[P]] on the weekend I saw Priya",
+      "expected": "Work was fine.\n\nOn the weekend I saw Priya.",
+      "tests": "Paragraph marker"
+    },
+    {
+      "id": 9,
+      "input": "can you guys come saturday ?",
+      "expected": "Can you guys come Saturday?",
+      "tests": "Punctuation command"
+    },
+    {
+      "id": 10,
+      "input": "hung out with Jaylen and Priya",
+      "expected": "Hung out with Jaylen and Priya.",
+      "tests": "Dictionary spelling kept"
+    },
+    {
+      "id": 11,
+      "input": "ran three point one miles at six thirty am",
+      "expected": "Ran 3.1 miles at 6:30 am.",
+      "tests": "Numbers and times"
+    },
+    {
+      "id": 12,
+      "input": "honestly the week was kinda mid",
+      "expected": "Honestly, the week was kinda mid.",
+      "tests": "Slang kept"
+    },
+    {
+      "id": 13,
+      "input": "I went to the market and then you know got dumplings",
+      "expected": "I went to the market and then got dumplings.",
+      "tests": "Filler, no em dash"
+    },
+    {
+      "id": 14,
+      "input": "Maya's birthday dinner was so fun",
+      "expected": "Maya's birthday dinner was so fun.",
+      "tests": "No added words or emoji"
+    }
+  ]
+}
