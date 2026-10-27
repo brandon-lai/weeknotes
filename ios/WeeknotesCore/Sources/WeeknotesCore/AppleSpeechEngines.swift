@@ -1,7 +1,10 @@
 @preconcurrency import AVFAudio
 import CoreMedia
 import Foundation
+import OSLog
 import Speech
+
+let speechLog = Logger(subsystem: "com.blai.weeknotes", category: "speech")
 
 /// Apple's on-device speech models through SpeechAnalyzer (iOS 26).
 ///
@@ -28,14 +31,46 @@ public final class AppleSpeechEngine: TranscriptionEngine, @unchecked Sendable {
         self.id = model == .speech ? "apple-speech" : "apple-dictation"
     }
 
+    /// Whether this model can run here at all. SpeechTranscriber reports itself unavailable on
+    /// devices without the model, and in the iOS Simulator.
+    public func isSupported() async -> Bool {
+        guard let locale = try? await locale() else { return false }
+        if model == .speech && !SpeechTranscriber.isAvailable { return false }
+        let status = await AssetInventory.status(forModules: [makeModule(locale: locale, live: false)])
+        return status != .unsupported
+    }
+
     public func prepare(vocabulary: [String]) async throws {
         lock.withLock { self.vocabulary = Array(vocabulary.prefix(AppConfig.vocabularyLimit)) }
         let locale = try await locale()
         let module = makeModule(locale: locale, live: false)
-        if let request = try await AssetInventory.assetInstallationRequest(supporting: [module]) {
-            try await request.downloadAndInstall()
+        let reserved = await AssetInventory.reservedLocales
+        speechLog.info("prepare \(self.id, privacy: .public) locale=\(locale.identifier, privacy: .public) reserved=\(reserved.map(\.identifier), privacy: .public) available=\(SpeechTranscriber.isAvailable)")
+        // On iOS the app must reserve the locale before it can check or download its assets
+        // ("not subscribed to transcription.en" otherwise)
+        if !reserved.contains(where: { $0.identifier(.bcp47) == locale.identifier(.bcp47) }) {
+            do {
+                let ok = try await AssetInventory.reserve(locale: locale)
+                speechLog.info("reserve \(locale.identifier, privacy: .public) -> \(ok)")
+            } catch {
+                speechLog.error("reserve failed: \(String(describing: error), privacy: .public)")
+                throw error
+            }
         }
-        _ = try? await AssetInventory.reserve(locale: locale)
+        let status = await AssetInventory.status(forModules: [module])
+        speechLog.info("asset status \(String(describing: status), privacy: .public)")
+        if status == .unsupported || (model == .speech && !SpeechTranscriber.isAvailable) {
+            throw TranscriptionError.modelUnavailable("not supported on this device")
+        }
+        do {
+            if let request = try await AssetInventory.assetInstallationRequest(supporting: [module]) {
+                speechLog.info("downloading speech assets")
+                try await request.downloadAndInstall()
+            }
+        } catch {
+            speechLog.error("asset request failed: \(String(describing: error), privacy: .public)")
+            throw error
+        }
     }
 
     func locale() async throws -> Locale {
@@ -250,9 +285,9 @@ public enum AudioFileStream {
 }
 
 /// Hands a non-Sendable value to another task that becomes its only user.
-struct UnsafeTransfer<Value>: @unchecked Sendable {
-    let value: Value
-    init(_ value: Value) { self.value = value }
+public struct UnsafeTransfer<Value>: @unchecked Sendable {
+    public let value: Value
+    public init(_ value: Value) { self.value = value }
 }
 
 private final class Flag: @unchecked Sendable {

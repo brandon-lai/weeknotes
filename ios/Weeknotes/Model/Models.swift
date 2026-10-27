@@ -148,7 +148,7 @@ nonisolated struct Message: Codable, Identifiable, Hashable, Sendable {
     var createdAt: Date
 }
 
-nonisolated struct ShareLink: Codable, Hashable, Sendable {
+nonisolated struct ShareLinkInfo: Codable, Hashable, Sendable {
     var token: String
     var updateId: UUID
     var circleId: UUID?
@@ -196,7 +196,7 @@ enum Prompts {
 
     /// A stable pick per week, so the suggestion doesn't change every time the composer opens.
     static func suggestions(for week: LocalDate, count: Int = 3) -> [String] {
-        let seed = abs(week.iso.hashValue == 0 ? 1 : week.year * 400 + week.month * 31 + week.day)
+        let seed = week.year * 400 + week.month * 31 + week.day
         return (0..<count).map { all[(seed + $0 * 3) % all.count] }
     }
 }

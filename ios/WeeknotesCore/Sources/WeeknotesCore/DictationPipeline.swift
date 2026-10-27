@@ -136,7 +136,7 @@ public struct DictationPipeline: Sendable {
 
     /// Words with no timing information: no pauses can be detected, so only a command that
     /// ends the dictation is applied.
-    static func untimedWords(_ text: String) -> [TimedWord] {
+    public static func untimedWords(_ text: String) -> [TimedWord] {
         text.split(whereSeparator: \.isWhitespace).map { TimedWord(text: String($0), start: 0, end: 0) }
     }
 }

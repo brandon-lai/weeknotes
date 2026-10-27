@@ -80,6 +80,12 @@ final class API {
         userID = session.user.id
     }
 
+    /// Developer sign-up for local accounts (the local stack doesn't confirm emails).
+    func signUp(email: String, password: String) async throws {
+        let response = try await client.auth.signUp(email: email, password: password)
+        userID = response.user.id
+    }
+
     func signOut() async {
         try? await client.auth.signOut()
         userID = nil
@@ -207,7 +213,8 @@ final class API {
 
     // MARK: Updates
 
-    static let updateColumns = "*, voice_memos(*), update_photos(*), update_audiences(circle_id), profiles(display_name)"
+    // updates → profiles is reachable three ways (author, reads, reactions); name the author's key
+    static let updateColumns = "*, voice_memos(*), update_photos(*), update_audiences(circle_id), profiles!updates_author_id_fkey(display_name)"
 
     /// The archive: every week I've written, newest first.
     func myUpdates() async throws -> [UpdateRow] {
@@ -275,6 +282,25 @@ final class API {
         let pCircles: [UUID]
         let pMemo: Memo?
         let pPhotos: [Photo]
+
+        /// Every parameter, nulls included: PostgREST picks the function by the names it's
+        /// given, so a missing `p_prompt` means "no such function".
+        func encode(to encoder: Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode(pId, forKey: .pId)
+            try c.encode(pPrompt, forKey: .pPrompt)
+            try c.encode(pBody, forKey: .pBody)
+            try c.encode(pRawTranscript, forKey: .pRawTranscript)
+            try c.encode(pComposedWith, forKey: .pComposedWith)
+            try c.encode(pComposeMs, forKey: .pComposeMs)
+            try c.encode(pCircles, forKey: .pCircles)
+            try c.encode(pMemo, forKey: .pMemo)
+            try c.encode(pPhotos, forKey: .pPhotos)
+        }
+
+        enum CodingKeys: String, CodingKey {
+            case pId, pPrompt, pBody, pRawTranscript, pComposedWith, pComposeMs, pCircles, pMemo, pPhotos
+        }
     }
 
     func publish(_ request: PublishRequest) async throws {
@@ -290,8 +316,17 @@ final class API {
         try await client.from("updates").delete().eq("id", value: update.id).execute()
     }
 
-    func shareLink(for updateID: UUID, circle: UUID?) async throws -> ShareLink {
-        struct Params: Encodable { let target: UUID; let circle: UUID? }
+    func shareLink(for updateID: UUID, circle: UUID?) async throws -> ShareLinkInfo {
+        struct Params: Encodable {
+            let target: UUID
+            let circle: UUID?
+            func encode(to encoder: Encoder) throws {
+                var c = encoder.container(keyedBy: CodingKeys.self)
+                try c.encode(target, forKey: .target)
+                try c.encode(circle, forKey: .circle)
+            }
+            enum CodingKeys: String, CodingKey { case target, circle }
+        }
         return try await client.rpc("create_share_link", params: Params(target: updateID, circle: circle)).single().execute().value
     }
 
@@ -430,11 +465,20 @@ enum Nonce {
 /// Turns any error into something a person can read.
 func friendlyMessage(_ error: Error) -> String {
     if let api = error as? APIError { return api.errorDescription ?? "Something went wrong." }
-    let text = "\(error)"
-    if text.contains("NSURLErrorDomain") || (error as NSError).domain == NSURLErrorDomain {
+    if (error as NSError).domain == NSURLErrorDomain || "\(error)".contains("NSURLErrorDomain") {
         return "Can't reach Weeknotes. Check your connection and try again."
     }
-    if let postgrest = error as? PostgrestError { return postgrest.message }
+    if let postgrest = error as? PostgrestError {
+        // Messages we raise ourselves (P0001/P0002/42501) are written for people; others aren't
+        if ["P0001", "P0002", "42501", "54000"].contains(postgrest.code ?? "") { return postgrest.message }
+        if postgrest.code == "23505" { return "That already exists." }
+        logger.error("Postgrest \(postgrest.code ?? "", privacy: .public): \(postgrest.message, privacy: .public)")
+        return "Something went wrong on our side. Try again in a moment."
+    }
     if let auth = error as? AuthError { return auth.message }
-    return error.localizedDescription
+    logger.error("\(String(describing: error), privacy: .public)")
+    return "Something went wrong. Try again in a moment."
 }
+
+import OSLog
+let logger = Logger(subsystem: "com.blai.weeknotes", category: "app")

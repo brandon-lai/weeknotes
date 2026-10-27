@@ -54,7 +54,7 @@ final class Draft {
     var memoFileURL: URL? { memoFileName.map { folder.appending(path: $0) } }
 }
 
-enum DraftStore {
+nonisolated enum DraftStore {
     static var root: URL {
         URL.applicationSupportDirectory.appending(path: "Drafts", directoryHint: .isDirectory)
     }
@@ -77,14 +77,14 @@ enum DraftStore {
         let url = URL.applicationSupportDirectory.appending(path: "Drafts.store")
         try? FileManager.default.createDirectory(at: .applicationSupportDirectory, withIntermediateDirectories: true)
         if LaunchOptions.arguments.contains("-resetState") {
-            for suffix in ["", "-shm", "-wal"] { try? FileManager.default.removeItem(at: URL(filePath: url.path() + suffix)) }
+            for suffix in ["", "-shm", "-wal"] { try? FileManager.default.removeItem(at: URL(filePath: url.path(percentEncoded: false) + suffix)) }
         }
         let configuration = ModelConfiguration(url: url)
         do {
             return try ModelContainer(for: Draft.self, configurations: configuration)
         } catch {
             // A store we can't open shouldn't keep the app from launching; drafts start fresh
-            for suffix in ["", "-shm", "-wal"] { try? FileManager.default.removeItem(at: URL(filePath: url.path() + suffix)) }
+            for suffix in ["", "-shm", "-wal"] { try? FileManager.default.removeItem(at: URL(filePath: url.path(percentEncoded: false) + suffix)) }
             return try! ModelContainer(for: Draft.self, configurations: configuration)
         }
     }

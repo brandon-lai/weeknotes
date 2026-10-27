@@ -20,3 +20,5 @@ web/.vercel
 # Supabase local state
 supabase/.branches
 supabase/.temp
+.seed-cache/
+.build/

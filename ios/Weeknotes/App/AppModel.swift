@@ -45,7 +45,7 @@ final class AppModel {
 
     init() {
         api = API()
-        if LaunchOptions.isUITesting { Self.resetLocalState() }
+        if LaunchOptions.arguments.contains("-resetState") { Self.resetLocalState() }
     }
 
     var acceptedFriends: [Friend] { friends.filter(\.isAccepted) }
@@ -65,6 +65,7 @@ final class AppModel {
             return
         }
         #if DEBUG
+        if LaunchOptions.arguments.contains("-signedOutForTest") { await api.signOut() }
         if let email = LaunchOptions.signInAs {
             await api.signOut()
             try? await api.signIn(email: email, password: LaunchOptions.devPassword)

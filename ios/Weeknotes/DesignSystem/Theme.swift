@@ -3,11 +3,11 @@ import SwiftUI
 /// Weeknotes looks like a well-kept notebook: warm paper, ink, and one marmalade accent.
 /// Update bodies are set in the system serif (New York) so they read like writing, not UI.
 enum Theme {
-    static let paper = Color(light: .init(red: 0.969, green: 0.953, blue: 0.918), dark: .init(red: 0.090, green: 0.082, blue: 0.075))
-    static let card = Color(light: .init(red: 1.0, green: 0.996, blue: 0.984), dark: .init(red: 0.149, green: 0.137, blue: 0.125))
-    static let ink = Color(light: .init(red: 0.122, green: 0.106, blue: 0.086), dark: .init(red: 0.949, green: 0.933, blue: 0.898))
-    static let secondaryInk = Color(light: .init(red: 0.392, green: 0.361, blue: 0.322), dark: .init(red: 0.690, green: 0.663, blue: 0.620))
-    static let hairline = Color(light: .init(red: 0.871, green: 0.847, blue: 0.800), dark: .init(red: 0.243, green: 0.227, blue: 0.208))
+    static let paper = Color(light: UIColor(red: 0.969, green: 0.953, blue: 0.918, alpha: 1), dark: UIColor(red: 0.090, green: 0.082, blue: 0.075, alpha: 1))
+    static let card = Color(light: UIColor(red: 1.0, green: 0.996, blue: 0.984, alpha: 1), dark: UIColor(red: 0.149, green: 0.137, blue: 0.125, alpha: 1))
+    static let ink = Color(light: UIColor(red: 0.122, green: 0.106, blue: 0.086, alpha: 1), dark: UIColor(red: 0.949, green: 0.933, blue: 0.898, alpha: 1))
+    static let secondaryInk = Color(light: UIColor(red: 0.392, green: 0.361, blue: 0.322, alpha: 1), dark: UIColor(red: 0.690, green: 0.663, blue: 0.620, alpha: 1))
+    static let hairline = Color(light: UIColor(red: 0.871, green: 0.847, blue: 0.800, alpha: 1), dark: UIColor(red: 0.243, green: 0.227, blue: 0.208, alpha: 1))
     static let accent = Color.accentColor
     static let unread = Color.accentColor
 

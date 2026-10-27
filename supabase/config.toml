@@ -266,6 +266,8 @@ max_frequency = "5s"
 15555550101 = "123456"
 15555550102 = "123456"
 15555550103 = "123456"
+15555550104 = "123456"
+15555550105 = "123456"
 
 # Configure logged in session timeouts.
 # [auth.sessions]
