@@ -7,7 +7,7 @@
 	<key>SupabaseAnonKey</key>
 	<string>$(SUPABASE_ANON_KEY)</string>
 	<key>WebReaderURL</key>
-	<string>https://weeknotes.vercel.app</string>
+	<string>https://weeknotes-app.vercel.app</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

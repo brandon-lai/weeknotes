@@ -16,7 +16,7 @@ nonisolated enum AppEnvironment {
 
     /// The web reader that serves share links (`/u/{token}`).
     static let webReaderURL: URL = {
-        let raw = Bundle.main.object(forInfoDictionaryKey: "WebReaderURL") as? String ?? "https://weeknotes.vercel.app"
+        let raw = Bundle.main.object(forInfoDictionaryKey: "WebReaderURL") as? String ?? "https://weeknotes-app.vercel.app"
         return URL(string: raw)!
     }()
 
