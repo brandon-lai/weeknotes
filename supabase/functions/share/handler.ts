@@ -5,6 +5,19 @@ import { adminClient, json } from "../_shared/http.ts";
 
 const MAX_URL_SECONDS = 6 * 60 * 60;
 
+/** Locally the function reaches Storage at an internal host (http://kong:8000); browsers need
+ *  the public one. PUBLIC_SUPABASE_URL fixes that; in production SUPABASE_URL is already public. */
+export function publicUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const override = Deno.env.get("PUBLIC_SUPABASE_URL");
+  if (!override) return url;
+  const internal = new URL(url);
+  const outside = new URL(override);
+  internal.protocol = outside.protocol;
+  internal.host = outside.host;
+  return internal.toString();
+}
+
 type Row = {
   token: string;
   expires_at: string;
@@ -37,7 +50,7 @@ export async function handle(req: Request): Promise<Response> {
     .from("share_links")
     .select(`token, expires_at,
       updates (id, week_start, prompt, body_text, posted_at,
-        profiles (display_name),
+        profiles!updates_author_id_fkey (display_name),
         voice_memos (storage_path, duration_ms, waveform, transcript_clean, transcript_raw),
         update_photos (storage_path, position, width, height))`)
     .eq("token", token)
@@ -57,7 +70,7 @@ export async function handle(req: Request): Promise<Response> {
   let memoUrl: string | null = null;
   if (memo) {
     const signed = await db.storage.from("memos").createSignedUrl(memo.storage_path, ttl);
-    memoUrl = signed.data?.signedUrl ?? null;
+    memoUrl = publicUrl(signed.data?.signedUrl);
   }
   const photos = [...(update.update_photos ?? [])].sort((a, b) => a.position - b.position);
   const signedPhotos = photos.length
@@ -86,7 +99,7 @@ export async function handle(req: Request): Promise<Response> {
         }
         : null,
       photos: photos
-        .map((p, i) => ({ url: signedPhotos[i]?.signedUrl ?? null, width: p.width, height: p.height }))
+        .map((p, i) => ({ url: publicUrl(signedPhotos[i]?.signedUrl), width: p.width, height: p.height }))
         .filter((p) => p.url),
     },
   });

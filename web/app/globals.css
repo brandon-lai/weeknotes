@@ -1,0 +1,128 @@
+/* Weeknotes: warm paper, ink, one marmalade accent. Same palette as the app. */
+:root {
+  --paper: #f7f3ea;
+  --card: #fffefb;
+  --ink: #1f1b16;
+  --ink-2: #645c52;
+  --hairline: #ded8cc;
+  --accent: #d96534;
+  --accent-ink: #ffffff;
+  --serif: "New York", ui-serif, "Iowan Old Style", "Apple Garamond", Georgia, serif;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #171513;
+    --card: #262320;
+    --ink: #f2eee5;
+    --ink-2: #b0a99e;
+    --hairline: #3e3a35;
+    --accent: #f48857;
+    --accent-ink: #1f1b16;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: 17px/1.55 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+a { color: var(--accent); }
+
+.page { padding: 20px 16px 64px; margin: 0 auto; }
+.narrow { max-width: 640px; }
+.wide { max-width: 920px; }
+
+.site { display: flex; justify-content: space-between; align-items: center; padding: 6px 2px 18px; }
+.wordmark { font: 600 22px var(--serif); color: var(--ink); text-decoration: none; }
+.site nav a { margin-left: 18px; color: var(--ink-2); text-decoration: none; font-size: 15px; }
+
+.card {
+  background: var(--card);
+  border: 0.5px solid color-mix(in srgb, var(--hairline) 70%, transparent);
+  border-radius: 22px;
+  padding: 22px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.03);
+}
+
+.byline { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
+.avatar {
+  width: 46px; height: 46px; border-radius: 50%; flex: none;
+  display: grid; place-items: center;
+  background: linear-gradient(160deg, #e5794a, #c9532a); color: #fff;
+  font: 600 17px var(--sans);
+}
+.author { font-weight: 600; font-size: 19px; }
+.week { color: var(--ink-2); font-size: 14px; }
+.prompt { font: italic 18px/1.5 var(--serif); color: var(--ink-2); margin: 0 0 10px; }
+.body { font: 20px/1.6 var(--serif); margin: 0 0 14px; overflow-wrap: anywhere; }
+
+.memo {
+  border: 0.5px solid var(--hairline); border-radius: 18px; padding: 14px; margin: 6px 0 16px;
+  background: color-mix(in srgb, var(--paper) 50%, var(--card));
+}
+.player { display: flex; gap: 14px; align-items: center; }
+.play {
+  width: 52px; height: 52px; border-radius: 50%; border: 0; flex: none; cursor: pointer;
+  background: var(--accent); color: var(--accent-ink); display: grid; place-items: center;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.play svg { width: 24px; height: 24px; fill: currentColor; }
+.track { flex: 1; min-width: 0; }
+.wave { display: flex; align-items: center; gap: 2px; height: 38px; cursor: pointer; touch-action: none; }
+.wave span { flex: 1; min-width: 0; border-radius: 2px; background: color-mix(in srgb, var(--ink-2) 35%, transparent); }
+.wave span.on { background: var(--accent); }
+.wave:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
+.meta { display: flex; justify-content: space-between; align-items: center; color: var(--ink-2); font-size: 13px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.rate { border: 0.5px solid var(--hairline); background: var(--card); color: var(--ink); border-radius: 999px; padding: 2px 10px; font-size: 13px; cursor: pointer; }
+.transcript p { font: 16px/1.55 var(--serif); margin: 12px 0 4px; color: color-mix(in srgb, var(--ink) 88%, transparent); }
+.transcript .clamped { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.link { background: none; border: 0; padding: 0; color: var(--accent); font: 600 14px var(--sans); cursor: pointer; }
+
+.photos { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; margin: 4px 0 12px; }
+.photos.n1 { grid-template-columns: 1fr; }
+.photos img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 14px; display: block; background: var(--hairline); }
+.photos.n3 img:first-child { grid-column: span 2; }
+
+.expires { color: var(--ink-2); font-size: 13px; margin: 8px 0 0; }
+
+.invite { margin-top: 28px; padding: 4px 4px 0; }
+.invite h2 { font: 600 24px var(--serif); margin: 0 0 6px; }
+.invite p { color: var(--ink-2); margin: 0 0 16px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.button {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 48px;
+  padding: 0 20px; border-radius: 999px; text-decoration: none; font-weight: 600; font-size: 16px;
+  border: 1px solid var(--hairline); color: var(--ink); background: var(--card);
+}
+.button.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.button.disabled { color: var(--ink-2); cursor: default; }
+.fine { font-size: 13px; margin-top: 12px !important; }
+
+.empty h1 { font: 600 26px var(--serif); margin: 0 0 8px; }
+.empty p { color: var(--ink-2); margin: 0; }
+
+/* Landing */
+.hero { padding: 36px 0 18px; }
+.hero h1 { font: 600 clamp(38px, 9vw, 64px)/1.05 var(--serif); margin: 0 0 14px; letter-spacing: -0.01em; }
+.hero p { font: 20px/1.5 var(--serif); color: var(--ink-2); max-width: 34em; margin: 0 0 22px; }
+.modes { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: 26px 0; }
+.modes h3 { font: 600 19px var(--serif); margin: 0 0 4px; }
+.modes p { margin: 0; color: var(--ink-2); font-size: 15px; }
+.principles { margin: 26px 0; padding: 0; list-style: none; }
+.principles li { padding: 14px 0; border-top: 0.5px solid var(--hairline); }
+.principles strong { font-family: var(--serif); font-size: 18px; display: block; }
+.principles span { color: var(--ink-2); font-size: 15px; }
+footer.foot { color: var(--ink-2); font-size: 14px; margin-top: 40px; display: flex; gap: 18px; flex-wrap: wrap; }
+footer.foot a { color: var(--ink-2); }
+
+.prose h1 { font: 600 34px/1.15 var(--serif); margin: 8px 0 6px; }
+.prose h2 { font: 600 21px var(--serif); margin: 28px 0 6px; }
+.prose p, .prose li { color: color-mix(in srgb, var(--ink) 90%, transparent); }
+.prose .updated { color: var(--ink-2); font-size: 14px; }
