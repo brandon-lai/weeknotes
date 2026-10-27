@@ -210,15 +210,22 @@ struct CircleEditorView: View {
                         Text("Add friends first, then put them in circles.").foregroundStyle(Theme.secondaryInk)
                     }
                     ForEach(model.acceptedFriends) { friend in
-                        Toggle(isOn: Binding(
-                            get: { members.contains(friend.id) },
-                            set: { if $0 { members.insert(friend.id) } else { members.remove(friend.id) } }
-                        )) {
+                        // A whole row to tap, like the audience picker: easier than a small switch
+                        Button {
+                            if members.contains(friend.id) { members.remove(friend.id) } else { members.insert(friend.id) }
+                        } label: {
                             HStack {
                                 AvatarView(name: friend.displayName, size: 30)
-                                Text(friend.displayName)
+                                Text(friend.displayName).foregroundStyle(Theme.ink)
+                                Spacer()
+                                Image(systemName: members.contains(friend.id) ? "checkmark.circle.fill" : "circle")
+                                    .font(.title3)
+                                    .foregroundStyle(members.contains(friend.id) ? Theme.accent : Theme.secondaryInk)
                             }
                         }
+                        .accessibilityLabel(friend.displayName)
+                        .accessibilityAddTraits(members.contains(friend.id) ? .isSelected : [])
+                        .accessibilityIdentifier("member-\(friend.displayName)")
                     }
                 } header: {
                     Text("Members")

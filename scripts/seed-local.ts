@@ -62,8 +62,9 @@ for (const person of people) {
   if (error) throw new Error(`${email}: ${error.message}`);
   person.id = data.user.id;
 }
-// An account with no profile yet, for the onboarding flow
+// Accounts with no profile yet: onboarding, and the contacts flow (M4)
 await admin.auth.admin.createUser({ email: "new@weeknotes.test", password: PASSWORD, email_confirm: true });
+await admin.auth.admin.createUser({ email: "nora@weeknotes.test", password: PASSWORD, email_confirm: true });
 
 for (const p of people) {
   await sql`insert into public.profiles (id, display_name, timezone, reminder_weekday, reminder_time)

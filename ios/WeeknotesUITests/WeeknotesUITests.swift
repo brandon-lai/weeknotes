@@ -149,6 +149,77 @@ final class WeeknotesUITests: XCTestCase {
         shot("24-new-user-feed")
     }
 
+    // MARK: M4 contacts
+
+    /// Two accounts find each other from contacts, become friends, and one puts the other in a
+    /// circle. The simulator's address book holds "Ana Morales" (scripts/test-ios.sh adds her).
+    func testFindFriendFromContactsThenCircle() throws {
+        launch(as: "nora@weeknotes.test")
+        let name = app.textFields["nameField"]
+        waitFor(name)
+        name.tap()
+        name.typeText("Nora Quinn")
+        app.buttons["profileContinue"].tap()
+
+        // Verify a phone number (the local stack's test code is 123456)
+        let phone = app.textFields["phoneField"]
+        waitFor(phone)
+        phone.tap()
+        phone.typeText("555-555-0104")
+        app.buttons["Send code"].tap()
+        let code = app.textFields["codeField"]
+        waitFor(code)
+        code.tap()
+        code.typeText("123456")
+        app.buttons["Verify"].tap()
+
+        // Contacts: Ana is in the address book with a verified number
+        waitFor(app.buttons["checkContacts"])
+        app.buttons["checkContacts"].tap()
+        // iOS 18+ asks how much of the address book to share; the sheet may belong to another process
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let shareAll = NSPredicate(format: "label BEGINSWITH 'Share All'")
+        for source in [app!, springboard] {
+            let button = source.buttons.matching(shareAll).firstMatch
+            if button.waitForExistence(timeout: 4) {
+                shot("33a-contacts-permission")
+                button.tap()
+                break
+            }
+        }
+        let add = app.buttons["add-Ana Morales"]
+        waitFor(add, timeout: 20)
+        shot("33-contacts-match")
+        add.tap()
+        waitFor(app.staticTexts["Requested"])
+        app.buttons["contactsNext"].tap()
+        waitFor(app.buttons["remindersNotNow"])
+        app.buttons["remindersNotNow"].tap()
+        waitFor(app.staticTexts["This week"])
+
+        // Ana accepts and adds Nora to a new circle
+        launch(as: "ana@weeknotes.test")
+        tab("People")
+        waitFor(app.staticTexts["Nora Quinn"])
+        shot("34-friend-request")
+        // Two requests are pending (Jo's from the seed, and Nora's): accept Nora's
+        app.cells.containing(.staticText, identifier: "Nora Quinn").buttons["Accept"].firstMatch.tap()
+        sleep(2)
+        app.buttons["newCircle"].tap()
+        let circleName = app.textFields["circleName"]
+        waitFor(circleName)
+        circleName.tap()
+        circleName.typeText("New friends")
+        let nora = app.buttons["member-Nora Quinn"]
+        waitFor(nora)
+        nora.tap()
+        XCTAssertTrue(nora.isSelected, "Nora is checked")
+        app.buttons["saveCircle"].tap()
+        // The circle row shows its member count: 1
+        waitFor(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'New friends' AND label ENDSWITH '1'")).firstMatch)
+        shot("35-circle-with-new-friend")
+    }
+
     func testWelcomeScreen() throws {
         app = XCUIApplication()
         app.launchArguments = ["-resetState", "-signedOutForTest"]

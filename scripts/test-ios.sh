@@ -29,6 +29,9 @@ deno run -A scripts/seed-local.ts
 UDID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; n=sys.argv[1]; d=[x for r in json.load(sys.stdin)["devices"].values() for x in r if x["name"]==n]; print(d[-1]["udid"])' "$SIM")
 xcrun simctl boot "$UDID" 2>/dev/null || true
 for service in microphone contacts photos; do xcrun simctl privacy "$UDID" grant "$service" com.blai.weeknotes 2>/dev/null || true; done
+# A contact for the M4 test: Ana's seeded, verified number
+printf 'BEGIN:VCARD\nVERSION:3.0\nN:Morales;Ana;;;\nFN:Ana Morales\nTEL;TYPE=CELL:(555) 555-0101\nEND:VCARD\n' > "$FIXTURES/ana.vcf"
+xcrun simctl addmedia "$UDID" "$FIXTURES/ana.vcf" 2>/dev/null || true
 
 cd "$ROOT/ios"
 TEST_RUNNER_FIXTURE_DIR="$FIXTURES" TEST_RUNNER_SCREENSHOT_DIR="${SCREENSHOT_DIR:-}" \

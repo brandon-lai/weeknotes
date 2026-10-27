@@ -166,7 +166,7 @@ struct DevSignInView: View {
     @State private var email = "ana@weeknotes.test"
     @State private var error: String?
 
-    static let seeded = ["ana@weeknotes.test", "ben@weeknotes.test", "cal@weeknotes.test", "new@weeknotes.test"]
+    static let seeded = ["ana@weeknotes.test", "ben@weeknotes.test", "cal@weeknotes.test", "new@weeknotes.test", "nora@weeknotes.test"]
 
     var body: some View {
         NavigationStack {
