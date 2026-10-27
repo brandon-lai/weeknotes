@@ -100,7 +100,7 @@ struct MemoRecorderView: View {
                 } label: {
                     Label("Re-record", systemImage: "arrow.counterclockwise").frame(maxWidth: .infinity).padding(.vertical, 6)
                 }
-                .buttonStyle(.glass)
+                .glassButton()
                 .accessibilityIdentifier("reRecord")
                 Button {
                     MemoPlayer.shared.stopAll()
@@ -108,7 +108,7 @@ struct MemoRecorderView: View {
                 } label: {
                     Label("Keep", systemImage: "checkmark").frame(maxWidth: .infinity).padding(.vertical, 6)
                 }
-                .buttonStyle(.glassProminent)
+                .glassProminentButton()
                 .accessibilityIdentifier("keepMemo")
             }
         } else {
@@ -118,7 +118,7 @@ struct MemoRecorderView: View {
                 } label: {
                     Image(systemName: recorder.state == .paused ? "play.fill" : "pause.fill").font(.title2).frame(width: 60, height: 60)
                 }
-                .buttonStyle(.glass)
+                .glassButton()
                 .buttonBorderShape(.circle)
                 .opacity(recorder.state == .recording || recorder.state == .paused ? 1 : 0)
                 .disabled(!(recorder.state == .recording || recorder.state == .paused))
@@ -134,7 +134,7 @@ struct MemoRecorderView: View {
                         }
                     }
                     .padding(6)
-                    .glassEffect(.regular.interactive(), in: .circle)
+                    .glassSurface(.circle, interactive: true)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(recorder.state == .idle ? "Start recording" : "Stop recording")
@@ -198,7 +198,7 @@ struct MemoRecorderView: View {
             } label: {
                 Text("Use this memo").frame(maxWidth: .infinity).padding(.vertical, 6)
             }
-            .buttonStyle(.glassProminent)
+            .glassProminentButton()
             .accessibilityIdentifier("useMemo")
         }
     }

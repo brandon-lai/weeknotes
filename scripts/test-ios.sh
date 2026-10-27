@@ -26,7 +26,8 @@ supabase db reset >/dev/null
 deno run -A scripts/seed-local.ts
 
 # The UI tests don't tap through permission alerts
-UDID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; n=sys.argv[1]; d=[x for r in json.load(sys.stdin)["devices"].values() for x in r if x["name"]==n]; print(d[-1]["udid"])' "$SIM")
+# SIM_ID picks an exact simulator (e.g. an iOS 18 one); otherwise the newest named $SIM
+UDID="${SIM_ID:-$(xcrun simctl list devices available -j | python3 -c 'import json,sys; n=sys.argv[1]; d=[x for r in json.load(sys.stdin)["devices"].values() for x in r if x["name"]==n]; print(d[-1]["udid"])' "$SIM")}"
 xcrun simctl boot "$UDID" 2>/dev/null || true
 for service in microphone contacts photos; do xcrun simctl privacy "$UDID" grant "$service" com.blai.weeknotes 2>/dev/null || true; done
 # A contact for the M4 test: Ana's seeded, verified number
@@ -36,5 +37,5 @@ xcrun simctl addmedia "$UDID" "$FIXTURES/ana.vcf" 2>/dev/null || true
 cd "$ROOT/ios"
 TEST_RUNNER_FIXTURE_DIR="$FIXTURES" TEST_RUNNER_SCREENSHOT_DIR="${SCREENSHOT_DIR:-}" \
 xcodebuild test -quiet -project Weeknotes.xcodeproj -scheme Weeknotes \
-  -destination "platform=iOS Simulator,name=$SIM" \
+  -destination "platform=iOS Simulator,id=$UDID" \
   -derivedDataPath "${DERIVED_DATA:-$ROOT/.build/ios}" "$@"

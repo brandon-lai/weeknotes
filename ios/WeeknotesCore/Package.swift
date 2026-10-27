@@ -7,7 +7,9 @@ import PackageDescription
 // declared here, so tests can swap them for fakes.
 let package = Package(
     name: "WeeknotesCore",
-    platforms: [.iOS(.v26), .macOS(.v26)],
+    // iOS 18 is the floor; SpeechAnalyzer and Foundation Models engines are marked iOS 26 and the
+    // app falls back without them. Package tests run on macOS 26, where everything is available.
+    platforms: [.iOS(.v18), .macOS(.v26)],
     products: [
         .library(name: "WeeknotesCore", targets: ["WeeknotesCore"]),
     ],

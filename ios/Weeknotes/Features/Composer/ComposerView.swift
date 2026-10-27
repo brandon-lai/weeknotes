@@ -163,7 +163,7 @@ struct ComposerView: View {
                             editor.focus()
                         }
                         .font(.subheadline)
-                        .buttonStyle(.glass)
+                        .glassButton()
                     }
                 }
             }
@@ -268,7 +268,7 @@ struct ComposerView: View {
     }
 
     private func bottomBar(_ draft: Draft) -> some View {
-        GlassEffectContainer(spacing: 14) {
+        GlassGroup(spacing: 14) {
             HStack(spacing: 14) {
                 Button {
                     Task { await toggleDictation(draft) }
@@ -278,7 +278,7 @@ struct ComposerView: View {
                         .frame(width: 60, height: 60)
                         .contentTransition(.symbolEffect(.replace))
                 }
-                .buttonStyle(.glassProminent)
+                .glassProminentButton()
                 .buttonBorderShape(.circle)
                 .disabled(dictation.state == .preparing || dictation.state == .finishing)
                 .accessibilityLabel(dictation.state == .listening ? "Stop dictating" : "Dictate")
@@ -287,7 +287,7 @@ struct ComposerView: View {
                 Button { showRecorder = true } label: {
                     Image(systemName: "waveform.badge.mic").font(.title3).frame(width: 50, height: 50)
                 }
-                .buttonStyle(.glass)
+                .glassButton()
                 .buttonBorderShape(.circle)
                 .disabled(dictation.isActive)
                 .accessibilityLabel("Record a voice memo")
@@ -296,7 +296,7 @@ struct ComposerView: View {
                 PhotosPicker(selection: $photoSelection, maxSelectionCount: max(1, AppConfig.maxPhotos - draft.photoItems.count), matching: .images) {
                     Image(systemName: "photo.on.rectangle").font(.title3).frame(width: 50, height: 50)
                 }
-                .buttonStyle(.glass)
+                .glassButton()
                 .buttonBorderShape(.circle)
                 .disabled(draft.photoItems.count >= AppConfig.maxPhotos || dictation.isActive)
                 .accessibilityLabel("Add photos")
@@ -335,7 +335,7 @@ struct ComposerView: View {
                 .accessibilityIdentifier("liveDictation")
         }
         .padding(16)
-        .glassEffect(.regular, in: .rect(cornerRadius: 22))
+        .glassSurface(.rect(cornerRadius: 22))
         .padding(.horizontal, 14)
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }
@@ -355,7 +355,7 @@ struct ComposerView: View {
         }
         ToolbarItem(placement: .confirmationAction) {
             Button(editing == nil ? "Post" : "Save") { post() }
-                .buttonStyle(.glassProminent)
+                .glassProminentButton()
                 .disabled(!(draft?.hasContent ?? false) || posting || dictation.isActive)
                 .accessibilityIdentifier("postButton")
         }

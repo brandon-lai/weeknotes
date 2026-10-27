@@ -12,7 +12,7 @@ The full brief is [`PRD.md`](./PRD.md). "Weeknotes" is the working name (PRD §1
 
 | Area | State |
 | --- | --- |
-| **iOS app** (SwiftUI, iOS 26) | All 11 screens in PRD §11: onboarding, this week's feed, update detail, composer, memo recorder, audience picker, people and circles, archive, replies inbox and threads, settings with the dictionary, and the internal bake-off. It builds in Debug (simulator) and Release (device). |
+| **iOS app** (SwiftUI, **iOS 18+**, best on iOS 26) | All 11 screens in PRD §11: onboarding, this week's feed, update detail, composer, memo recorder, audience picker, people and circles, archive, replies inbox and threads, settings with the dictionary, and the internal bake-off. It builds in Debug (simulator) and Release (device). |
 | **Dictation pipeline** | All five stages. Stage 1 runs on Apple SpeechAnalyzer: `SpeechTranscriber`, or `DictationTranscriber` with friends' names as contextual strings. Stages 2, 3 and 5 are plain code. Stage 4 uses Apple Foundation Models on device, with Claude Haiku 5.5 as the hosted fallback. **Both formatters pass all 14 golden cases.** |
 | **Voice memos** | AAC, mono, 64 kbps, 5-minute cap, pause and resume, a live waveform, and a 100-value waveform summary. Transcription is on device, with OpenAI as the fallback. Memos upload to private storage and play inline at 1×/1.5×/2× with lock-screen controls. Listening progress is tracked. |
 | **Friends and circles** | Contact matching sends only hashed phone numbers, compared server-side against a peppered hash of the *verified* phone. There are friend requests, and circles can be created, edited and deleted. |
@@ -58,7 +58,13 @@ The hosted model keeps the PRD prompt verbatim (`supabase/functions/_shared/form
 
 **Formatting while you talk.** Running stages 2–5 once after stop took 5.2 s for a 60 s dictation on device, against a 1.5 s target. `LiveDictationFormatter` formats finished sentence groups while the user is still talking. It keeps one word of lookahead so stage 2 can measure the pause after a word, and it never splits right before a command. After stop, only the tail is left.
 
-**Engine fallback chain.** Apple Speech → Apple Dictation → hosted. `SpeechTranscriber` reports itself unsupported in the Simulator (and on devices without the model). The configured engine is used when it can run.
+**iOS 18 support (a change from the PRD's iOS 26 minimum, requested after the build).** The app runs on iOS 18 with fallbacks behind `#available` checks; iOS 26 behaves exactly as before.
+- Speech: SpeechAnalyzer is iOS 26 only, so iOS 18 uses Apple's older `SFSpeechRecognizer` ("apple-sfspeech", `LegacySpeechEngine`). It runs on device where the phone supports it and takes friends' names as contextual strings. Without on-device support it uses Apple's servers, which cap audio at about a minute, so long memos go to hosted transcription.
+- Formatting: Foundation Models is iOS 26 only (and needs Apple Intelligence), so iOS 18 formats with the hosted model. It's weak-linked (`-weak_framework FoundationModels`) so the app launches where the framework doesn't exist.
+- Live dictation on iOS 18 formats once, after stop: `SFSpeechRecognizer` reports one growing partial and only finalizes at the end, so there are no finished sentences to format early. Expect hosted formatting latency (a second or two), not the iOS 26 number.
+- Look: Liquid Glass on iOS 26; system materials and bordered buttons on iOS 18 (`DesignSystem/Compat.swift`).
+
+**Engine fallback chain.** On iOS 26, Apple Speech → Apple Dictation → hosted; on iOS 18, SFSpeechRecognizer → hosted. `SpeechTranscriber` reports itself unsupported in the Simulator (and on devices without the model). The configured engine is used when it can run.
 
 **Phone numbers.** A number is matchable only after it's verified with a code (Supabase Auth phone change). The server derives the hash itself, as HMAC with a secret pepper over SHA-256 of the E.164 number, so nobody can claim someone else's number and a leaked table can't be reversed by enumerating numbers. Matching is limited to 30 calls a day and 3,000 hashes per call.
 
@@ -93,7 +99,7 @@ The hosted model keeps the PRD prompt verbatim (`supabase/functions/_shared/form
 
 ```
 ios/
-  Weeknotes.xcodeproj           app + unit + UI test targets (synchronized folders, iOS 26)
+  Weeknotes.xcodeproj           app + unit + UI test targets (synchronized folders, iOS 18+)
   WeeknotesCore/                Swift package: everything testable without a phone
     Transcription.swift           TranscriptionEngine protocol, TimedWord, Transcript
     AppleSpeechEngines.swift      SpeechTranscriber / DictationTranscriber engines (stage 1)
@@ -137,12 +143,12 @@ All seeded accounts use the password `weeknotes-dev-password`. The Debug build p
 
 | Suite | Command | Count |
 | --- | --- | --- |
-| Core logic, golden set (on device), speech on real audio | `cd ios/WeeknotesCore && swift test` | 73 (golden set needs Apple Intelligence on the Mac) |
+| Core logic, golden set (on device), speech on real audio | `cd ios/WeeknotesCore && swift test` | 75 (golden set needs Apple Intelligence on the Mac) |
 | Golden set, hosted engine | `WEEKNOTES_FUNCTIONS_URL=… WEEKNOTES_ANON_KEY=… WEEKNOTES_TEST_JWT=… swift test --filter Hosted` | 14 |
 | 60-second dictation latency | `WEEKNOTES_LATENCY=1 swift test --filter Latency` | 1 |
 | Database: RLS, RPCs, week math, reminders | `supabase test db` | 78 |
 | Edge Functions and Storage policies | `deno test -A supabase/tests/functions.test.ts` | 9 |
-| iOS app: unit + UI flows (resets and seeds first) | `scripts/test-ios.sh` (`SCREENSHOT_DIR=…` saves every screen) | 6 + 8 |
+| iOS app: unit + UI flows (resets and seeds first), run on **iOS 18.1 and iOS 26.3** simulators | `scripts/test-ios.sh` (`SIM_ID=<udid>` picks the simulator; `SCREENSHOT_DIR=…` saves every screen) | 6 + 8 |
 | Web reader | `cd web && npm test` | 4 |
 
 ## Launch checklist (owner only)
@@ -194,6 +200,7 @@ These need your accounts, your money or your judgment.
 ## Known limitations
 
 - **In the iPhone 17 Pro iOS 26.3.1 simulator on this Mac, every emoji draws as "?".** Safari in the same simulator does it too, so it isn't an app bug. Real devices are fine.
+- **On iOS 18 the hosted formatter is the only formatter,** so dictation cleanup needs a connection and takes a second or two after stop.
 - **Apple's `SpeechTranscriber` doesn't run in the Simulator.** There, dictation and memos use `DictationTranscriber` through the fallback chain.
 - **Live dictation formats in sentence groups.** A self-correction that spans two groups ("…at seven. Actually eight") isn't caught. The bake-off will show whether that matters in practice.
 

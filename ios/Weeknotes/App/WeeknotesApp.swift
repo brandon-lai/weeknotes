@@ -86,7 +86,7 @@ struct ToastView: View {
                 .font(.subheadline.weight(.medium))
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                .glassEffect(.regular, in: .capsule)
+                .glassSurface(.capsule)
                 .padding(.top, 8)
                 .transition(.move(edge: .top).combined(with: .opacity))
                 .task(id: toast.id) {
@@ -120,7 +120,7 @@ struct MainView: View {
             }
             .badge(model.incomingRequests.count)
         }
-        .tabBarMinimizeBehavior(.onScrollDown)
+        .minimizeTabBarOnScroll()
         .fullScreenCover(isPresented: $model.composerRequested) {
             ComposerView()
         }

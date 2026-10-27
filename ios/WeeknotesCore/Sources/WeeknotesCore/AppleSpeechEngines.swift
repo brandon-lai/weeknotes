@@ -12,6 +12,7 @@ let speechLog = Logger(subsystem: "com.blai.weeknotes", category: "speech")
 ///   It ignores contextual strings, so names are fixed later, in stages 3 and 4.
 /// - "apple-dictation": `DictationTranscriber`, which accepts up to 100 contextual strings
 ///   (friends' names). The bake-off decides whether it wins on names.
+@available(iOS 26.0, macOS 26.0, *)
 public final class AppleSpeechEngine: TranscriptionEngine, @unchecked Sendable {
     public enum Model: Sendable {
         case speech

@@ -36,7 +36,13 @@ final class WeeknotesUITests: XCTestCase {
     }
 
     func tab(_ name: String) {
-        app.tabBars.buttons[name].firstMatch.tap()
+        let button = app.tabBars.buttons[name].firstMatch
+        // On iOS 26 the tab bar collapses to the current tab after scrolling; scrolling back expands it
+        if !button.waitForExistence(timeout: 2) {
+            app.swipeDown()
+            app.swipeDown()
+        }
+        button.tap()
     }
 
     func waitFor(_ element: XCUIElement, timeout: TimeInterval = 15, file: StaticString = #filePath, line: UInt = #line) {
@@ -61,7 +67,8 @@ final class WeeknotesUITests: XCTestCase {
 
         // A memo card in detail
         app.swipeDown(); app.swipeDown(); app.swipeDown()
-        let deepa = element("card-Deepa Raman")
+        // Tap the name: the middle of a memo card is its play button
+        let deepa = app.staticTexts["Deepa Raman"].firstMatch
         waitFor(deepa)
         deepa.tap()
         waitFor(app.buttons["Play Deepa Raman's memo"])
@@ -103,7 +110,7 @@ final class WeeknotesUITests: XCTestCase {
         app.navigationBars.buttons.firstMatch.tap()
 
         tab("People")
-        waitFor(app.staticTexts["Friend requests"])
+        waitFor(app.staticTexts["Jo Lindqvist"])
         sleep(1)
         shot("11-people")
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'College'")).firstMatch.tap()
@@ -294,13 +301,15 @@ final class WeeknotesUITests: XCTestCase {
         open!.tap()
         waitFor(app.buttons["dictateButton"])
         app.buttons["dictateButton"].tap()
-        sleep(3)
-        shot("27a-after-tap")
+        // iOS 18's recognizer asks for speech recognition permission (iOS 26's SpeechAnalyzer doesn't)
+        let allow = XCUIApplication(bundleIdentifier: "com.apple.springboard").buttons["Allow"]
+        if allow.waitForExistence(timeout: 4) { allow.tap() }
         let live = element("liveDictation")
         waitFor(live, timeout: 30)
-        sleep(4)
+        // The fixture plays in real time; stop once its last words ("…for a run") are in
+        let heard = NSPredicate(format: "label CONTAINS[c] 'run'")
+        _ = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: heard, object: live)], timeout: 25)
         shot("27-dictating")
-        sleep(6)
         app.buttons["dictateButton"].tap()
         waitFor(app.buttons["showOriginal"], timeout: 30)
         shot("28-dictated")
@@ -342,7 +351,7 @@ final class WeeknotesUITests: XCTestCase {
 
         // Ana is in Cal's College circle
         launch(as: "ana@weeknotes.test")
-        let card = element("card-Cal Whitfield")
+        let card = app.staticTexts["Cal Whitfield"].firstMatch
         waitFor(card, timeout: 20)
         card.tap()
         let play = app.buttons["Play Cal Whitfield's memo"]

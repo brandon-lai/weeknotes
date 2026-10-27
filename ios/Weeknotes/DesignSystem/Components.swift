@@ -113,7 +113,7 @@ struct MemoPlayerView: View {
                     .frame(width: 44, height: 44)
                     .contentTransition(.symbolEffect(.replace))
             }
-            .buttonStyle(.glassProminent)
+            .glassProminentButton()
             .buttonBorderShape(.circle)
             .accessibilityLabel(isPlaying ? "Pause \(authorName)'s memo" : "Play \(authorName)'s memo")
 
@@ -201,7 +201,7 @@ struct EmptyStateView: View {
                 .multilineTextAlignment(.center)
             if let actionTitle, let action {
                 Button(actionTitle, action: action)
-                    .buttonStyle(.glassProminent)
+                    .glassProminentButton()
                     .padding(.top, 4)
             }
         }

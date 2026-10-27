@@ -134,10 +134,12 @@ struct BakeOffView: View {
         let api = model.api
         let vocabulary = model.vocabulary
         var run = BakeOffRun(recording: recording.file, label: recording.label, durationMs: Int(MemoRecorder.duration(of: url) * 1000), reference: recording.reference)
-        let formatters: [(String, DictationPipeline)] = [
-            ("apple-foundation", DictationPipeline(primary: AppleFoundationFormatter(), fallback: nil)),
+        var formatters: [(String, DictationPipeline)] = [
             ("hosted-small", DictationPipeline(primary: model.engines.hostedFormatter(api: api), fallback: nil)),
         ]
+        if let onDevice = EngineSettings.onDeviceFormatter {
+            formatters.insert(("apple-foundation", DictationPipeline(primary: onDevice, fallback: nil)), at: 0)
+        }
         for id in EngineSettings.transcriptionIDs {
             var result = BakeOffRun.EngineResult(engineID: id)
             let engine = EngineSettings.makeEngine(id, api: api)
@@ -234,7 +236,7 @@ private struct BakeOffRecorder: View {
                         }
                     }
                 }
-                .buttonStyle(.glassProminent)
+                .glassProminentButton()
                 .controlSize(.large)
             }
             .padding(24)

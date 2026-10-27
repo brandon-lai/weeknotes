@@ -136,7 +136,7 @@ struct UpdateDetailView: View {
                     Text(emoji)
                         .font(.title3)
                         .frame(width: 44, height: 44)
-                        .glassEffect(reaction == emoji ? .regular.tint(Theme.accent.opacity(0.35)).interactive() : .regular.interactive(), in: .circle)
+                        .glassSurface(.circle, interactive: true, tint: reaction == emoji ? Theme.accent.opacity(0.35) : nil)
                 }
                 .buttonStyle(.plain)
                 .opacity(reaction == nil || reaction == emoji ? 1 : 0.45)
@@ -164,7 +164,7 @@ struct UpdateDetailView: View {
                 } label: {
                     Image(systemName: "arrow.up").font(.headline).frame(width: 40, height: 40)
                 }
-                .buttonStyle(.glassProminent)
+                .glassProminentButton()
                 .buttonBorderShape(.circle)
                 .disabled(reply.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || sending)
                 .accessibilityLabel("Send reply")
@@ -285,7 +285,7 @@ struct ShareLinkButton: View {
                 ShareLink(item: link.url, subject: Text("My week"), message: Text("Here's my week. Read or listen, no app needed.")) {
                     Label("Share link", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.glassProminent)
+                .glassProminentButton()
                 .accessibilityIdentifier("shareLink")
                 Text("Anyone with the link can read this update until \(link.expiresAt.formatted(date: .abbreviated, time: .omitted)).")
                     .font(.caption).foregroundStyle(Theme.secondaryInk)
@@ -295,7 +295,7 @@ struct ShareLinkButton: View {
                 } label: {
                     Label(loading ? "Making link…" : "Get a share link", systemImage: "link").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.glass)
+                .glassButton()
                 .disabled(loading)
                 .accessibilityIdentifier("makeShareLink")
             }

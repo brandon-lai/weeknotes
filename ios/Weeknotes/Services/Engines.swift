@@ -8,8 +8,15 @@ import WhisperKit
 /// never names one.
 @Observable
 final class EngineSettings {
-    static let transcriptionIDs = ["apple-speech", "apple-dictation", "whisperkit-turbo", "openai-hosted"]
+    static let transcriptionIDs = ["apple-speech", "apple-dictation", "apple-sfspeech", "whisperkit-turbo", "openai-hosted"]
     static let formattingIDs = ["apple-foundation", "hosted-small"]
+
+    /// SpeechAnalyzer and Foundation Models arrived in iOS 26; on iOS 18 the app uses the
+    /// older Apple recognizer and the hosted formatter.
+    static var hasModernSpeech: Bool {
+        if #available(iOS 26.0, *) { return true }
+        return false
+    }
 
     var transcriptionID: String {
         didSet { UserDefaults.standard.set(transcriptionID, forKey: "engine.transcription") }
@@ -19,7 +26,7 @@ final class EngineSettings {
     }
 
     init() {
-        transcriptionID = UserDefaults.standard.string(forKey: "engine.transcription") ?? "apple-speech"
+        transcriptionID = UserDefaults.standard.string(forKey: "engine.transcription") ?? (Self.hasModernSpeech ? "apple-speech" : "apple-sfspeech")
         primaryFormatterID = UserDefaults.standard.string(forKey: "engine.formatting") ?? "apple-foundation"
     }
 
@@ -27,6 +34,7 @@ final class EngineSettings {
         switch id {
         case "apple-speech": "Apple Speech (SpeechTranscriber)"
         case "apple-dictation": "Apple Dictation (DictationTranscriber)"
+        case "apple-sfspeech": "Apple Speech, iOS 18 (SFSpeechRecognizer)"
         case "whisperkit-turbo": "Whisper large-v3 turbo (WhisperKit)"
         case "openai-hosted": "OpenAI hosted"
         case "apple-foundation": "Apple Foundation Models (on device)"
@@ -39,25 +47,35 @@ final class EngineSettings {
         Self.makeEngine(id ?? transcriptionID, api: api)
     }
 
+    /// The engine for an ID. The iOS 26 engines map to the iOS 18 recognizer on older systems.
     static func makeEngine(_ id: String, api: API?) -> any TranscriptionEngine {
         switch id {
-        case "apple-dictation": AppleSpeechEngine(model: .dictation)
-        case "whisperkit-turbo": WhisperKitEngine.shared
-        case "openai-hosted": OpenAIHostedEngine(accessToken: { [weak api] in await api?.accessToken() })
-        default: AppleSpeechEngine(model: .speech)
+        case "whisperkit-turbo": return WhisperKitEngine.shared
+        case "openai-hosted": return OpenAIHostedEngine(accessToken: { [weak api] in await api?.accessToken() })
+        case "apple-sfspeech": return LegacySpeechEngine()
+        default:
+            if #available(iOS 26.0, *) {
+                return AppleSpeechEngine(model: id == "apple-dictation" ? .dictation : .speech)
+            }
+            return LegacySpeechEngine()
         }
     }
 
-    /// The configured engine if it can run on this device, else the next one that can:
-    /// Apple Speech → Apple Dictation → hosted. Apple's speech models don't run in the
-    /// Simulator or on devices without them.
+    /// The configured engine if it can run on this device, else the next one that can.
+    /// iOS 26: Apple Speech → Apple Dictation → hosted (Apple's SpeechTranscriber doesn't run in
+    /// the Simulator or on devices without its model). iOS 18: SFSpeechRecognizer → hosted.
     func availableTranscriptionEngine(api: API?) async -> any TranscriptionEngine {
         var order = [transcriptionID]
-        for fallback in ["apple-speech", "apple-dictation", "openai-hosted"] where !order.contains(fallback) { order.append(fallback) }
+        let chain = Self.hasModernSpeech ? ["apple-speech", "apple-dictation", "openai-hosted"] : ["apple-sfspeech", "openai-hosted"]
+        for fallback in chain where !order.contains(fallback) { order.append(fallback) }
         for id in order {
             let engine = Self.makeEngine(id, api: api)
-            if let apple = engine as? AppleSpeechEngine {
+            if #available(iOS 26.0, *), let apple = engine as? AppleSpeechEngine {
                 if await apple.isSupported() { return apple }
+                continue
+            }
+            if let legacy = engine as? LegacySpeechEngine {
+                if legacy.isSupported { return legacy }
                 continue
             }
             if id == "whisperkit-turbo" && !WhisperKitEngine.shared.isLoaded { continue }
@@ -71,11 +89,18 @@ final class EngineSettings {
         return HostedFormatter(functionsURL: functions, apiKey: AppEnvironment.supabaseAnonKey, accessToken: { [weak api] in await api?.accessToken() })
     }
 
+    /// Apple's on-device formatter, or nil before iOS 26 (and when turned off for testing).
+    static var onDeviceFormatter: (any FormattingEngine)? {
+        if LaunchOptions.disableOnDeviceFormatting { return nil }
+        if #available(iOS 26.0, *) { return AppleFoundationFormatter() }
+        return nil
+    }
+
     /// The formatting pipeline: on-device first, hosted as fallback (or the reverse, if the
-    /// bake-off made the hosted model the default).
+    /// bake-off made the hosted model the default). On iOS 18 it's hosted only.
     func pipeline(api: API?) -> DictationPipeline {
         let hosted = hostedFormatter(api: api)
-        let onDevice: (any FormattingEngine)? = LaunchOptions.disableOnDeviceFormatting ? nil : AppleFoundationFormatter()
+        let onDevice = Self.onDeviceFormatter
         if primaryFormatterID == "hosted-small" {
             return DictationPipeline(primary: hosted, fallback: onDevice)
         }
@@ -84,6 +109,7 @@ final class EngineSettings {
 
     var onDeviceFormattingStatus: String {
         if LaunchOptions.disableOnDeviceFormatting { return "Turned off for testing" }
+        guard #available(iOS 26.0, *) else { return "Needs iOS 26 (uses the hosted model)" }
         switch AppleFoundationFormatter.unavailableReason {
         case nil: return "Available"
         case "deviceNotEligible": return "This iPhone doesn't support Apple Intelligence"

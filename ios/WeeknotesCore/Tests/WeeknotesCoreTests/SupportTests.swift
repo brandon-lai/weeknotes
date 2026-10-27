@@ -199,3 +199,24 @@ struct FormattingPromptTests {
         #expect(!FormattingPrompt.instructions(vocabulary: []).contains("{vocabulary}"))
     }
 }
+
+@Suite("iOS 18 speech engine")
+struct LegacySpeechTests {
+    /// SFSpeechRecognizer restarts from empty after a long pause; nothing said before is lost.
+    @Test func fileTranscriptionKeepsTextAcrossRestarts() {
+        let segments = LegacySpeechEngine.Segments()
+        segments.update(text: "Hi everyone", words: [TimedWord(text: "Hi", start: 0, end: 0.3), TimedWord(text: "everyone", start: 0.3, end: 0.8)])
+        segments.update(text: "Hi everyone, this was my week.", words: [])
+        segments.update(text: "Bye", words: [TimedWord(text: "Bye", start: 290, end: 290.4)])
+        segments.update(text: "Bye.", words: [TimedWord(text: "Bye.", start: 290, end: 290.4)])
+        let (text, words) = segments.finish()
+        #expect(text == "Hi everyone, this was my week. Bye.")
+        #expect(words.last?.text == "Bye.")
+    }
+
+    @Test func growingPartialsAreNotRestarts() {
+        let segments = LegacySpeechEngine.Segments()
+        for partial in ["We", "We got", "We got dinner", "We got dinner at 8."] { segments.update(text: partial, words: []) }
+        #expect(segments.finish().0 == "We got dinner at 8.")
+    }
+}

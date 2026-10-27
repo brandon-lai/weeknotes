@@ -105,7 +105,7 @@ struct ThreadView: View {
                 Button { send() } label: {
                     Image(systemName: "arrow.up").font(.headline).frame(width: 40, height: 40)
                 }
-                .buttonStyle(.glassProminent)
+                .glassProminentButton()
                 .buttonBorderShape(.circle)
                 .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || sending)
                 .accessibilityLabel("Send")

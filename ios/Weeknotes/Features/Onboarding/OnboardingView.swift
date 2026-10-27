@@ -475,7 +475,7 @@ private struct RemindersStep: View {
             } label: {
                 Text("Turn on reminders").frame(maxWidth: .infinity).padding(.vertical, 6)
             }
-            .buttonStyle(.glassProminent)
+            .glassProminentButton()
             .accessibilityIdentifier("enableReminders")
             Button("Not now", action: onDone)
                 .frame(maxWidth: .infinity)

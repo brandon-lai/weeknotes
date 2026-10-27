@@ -142,6 +142,7 @@ import FoundationModels
 /// - Output is guided generation into a single `text` field, so it can't add a preamble.
 /// - Markers never reach the model. Text is split at `[[NL]]`/`[[P]]`, each piece is formatted
 ///   on its own, and the markers are put back, so they can't be lost or moved.
+@available(iOS 26.0, macOS 26.0, *)
 public struct AppleFoundationFormatter: FormattingEngine {
     public let id = "apple-foundation"
 
@@ -206,6 +207,7 @@ public struct AppleFoundationFormatter: FormattingEngine {
     }
 }
 
+@available(iOS 26.0, macOS 26.0, *)
 enum OnDevicePrompt {
     /// The PRD rules, minus the inline examples (they become turns below) and the marker rule
     /// (markers are handled in code).

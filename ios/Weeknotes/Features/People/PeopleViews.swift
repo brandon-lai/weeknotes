@@ -83,7 +83,7 @@ struct PeopleView: View {
                                 Text(friend.displayName)
                                 Spacer()
                                 Button("Accept") { respond(friend, accept: true) }
-                                    .buttonStyle(.glassProminent)
+                                    .glassProminentButton()
                                     .controlSize(.small)
                                 Button("Decline") { respond(friend, accept: false) }
                                     .controlSize(.small)
@@ -315,7 +315,7 @@ struct FindFriendsView: View {
                 Label(searched ? "Search again" : "Check my contacts", systemImage: "person.crop.circle.badge.magnifyingglass")
                     .frame(maxWidth: .infinity).padding(.vertical, 4)
             }
-            .buttonStyle(.glassProminent)
+            .glassProminentButton()
             .disabled(working)
             .accessibilityIdentifier("checkContacts")
 
@@ -336,10 +336,10 @@ struct FindFriendsView: View {
                     case "outgoing":
                         Text("Requested").font(.caption).foregroundStyle(Theme.secondaryInk)
                     case "incoming":
-                        Button("Accept") { add(match) }.buttonStyle(.glassProminent).controlSize(.small)
+                        Button("Accept") { add(match) }.glassProminentButton().controlSize(.small)
                     default:
                         Button("Add") { add(match) }
-                            .buttonStyle(.glassProminent)
+                            .glassProminentButton()
                             .controlSize(.small)
                             .accessibilityIdentifier("add-\(match.displayName)")
                     }
