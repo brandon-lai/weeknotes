@@ -4,8 +4,14 @@ import SwiftUI
 @main
 struct WeeknotesApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @State private var model = AppModel()
-    private let container = DraftStore.container()
+    @State private var model: AppModel
+    private let container: ModelContainer
+
+    init() {
+        let container = EntryStore.container()
+        self.container = container
+        _model = State(initialValue: AppModel(context: container.mainContext))
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -18,6 +24,7 @@ struct WeeknotesApp: App {
                     if let url = activity.webpageURL { model.handle(url: url) }
                 }
                 .task {
+                    PushService.shared.start()
                     PushService.shared.onOpenCompose = { [model] in
                         model.selectedTab = .week
                         model.composerRequested = true
@@ -33,22 +40,31 @@ struct WeeknotesApp: App {
 
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
+        @Bindable var model = model
         ZStack {
             switch model.phase {
             case .launching:
                 LaunchView()
-            case .notConfigured:
-                NotConfiguredView()
-            case .signedOut, .needsProfile:
-                OnboardingView()
+            case .welcome:
+                WelcomeView()
             case .ready:
                 MainView()
             }
         }
         .animation(.smooth, value: model.phase)
         .overlay(alignment: .top) { ToastView() }
+        .sheet(isPresented: $model.accountFlowRequested) {
+            AccountFlowView()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // Coming back: upload anything saved offline, refresh reminders
+            if phase == .active && model.phase == .ready {
+                Task { await model.syncWeeks() }
+            }
+        }
     }
 }
 
@@ -61,18 +77,6 @@ struct LaunchView: View {
             Text("Weeknotes").font(Theme.titleFont).foregroundStyle(Theme.ink)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .paperBackground()
-    }
-}
-
-/// A Release build with no backend configured (see README) says so instead of failing oddly.
-struct NotConfiguredView: View {
-    var body: some View {
-        ContentUnavailableView(
-            "Weeknotes isn't set up",
-            systemImage: "wrench.and.screwdriver",
-            description: Text("This build has no server address. Set SUPABASE_URL and SUPABASE_ANON_KEY for the Release configuration.")
-        )
         .paperBackground()
     }
 }
@@ -111,14 +115,21 @@ struct MainView: View {
             Tab("Archive", systemImage: "books.vertical", value: AppModel.Tab.archive) {
                 ArchiveView()
             }
-            Tab("Replies", systemImage: "bubble.left.and.bubble.right", value: AppModel.Tab.inbox) {
-                InboxView()
+            if model.isSignedIn {
+                Tab("Replies", systemImage: "bubble.left.and.bubble.right", value: AppModel.Tab.inbox) {
+                    InboxView()
+                }
+                .badge(model.unreadReplies)
+                Tab("People", systemImage: "person.2", value: AppModel.Tab.people) {
+                    PeopleView()
+                }
+                .badge(model.incomingRequests.count)
+            } else {
+                // Signed out: what an account adds, and the way in
+                Tab("Friends", systemImage: "person.2", value: AppModel.Tab.people) {
+                    FriendsPitchView()
+                }
             }
-            .badge(model.unreadReplies)
-            Tab("People", systemImage: "person.2", value: AppModel.Tab.people) {
-                PeopleView()
-            }
-            .badge(model.incomingRequests.count)
         }
         .minimizeTabBarOnScroll()
         .fullScreenCover(isPresented: $model.composerRequested) {

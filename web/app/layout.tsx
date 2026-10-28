@@ -6,11 +6,11 @@ const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://weeknotes-app.vercel.a
 export const metadata: Metadata = {
   metadataBase: new URL(site),
   title: "Weeknotes",
-  description: "Once a week, tell your friends how it went. Write, dictate or record a voice memo; post once to every circle you choose.",
+  description: "Once a week, write down how it went. Type, dictate or record a voice memo; no account needed. Share a week with the circles you choose.",
   applicationName: "Weeknotes",
   openGraph: {
     title: "Weeknotes",
-    description: "Once a week, tell your friends how it went.",
+    description: "Once a week, write down how it went.",
     siteName: "Weeknotes",
     type: "website",
   },

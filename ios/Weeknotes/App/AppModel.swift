@@ -1,18 +1,25 @@
 import Foundation
 import Observation
+import SwiftData
 import SwiftUI
 import WeeknotesCore
 
-/// App-wide state: who is signed in, their profile, friends and circles, and where deep links
-/// should take the user. Feature views keep their own local state.
+/// App-wide state. The app works with no account: weeks are written and kept on the phone. An
+/// account (`account == .signedIn`) adds friends, circles, sharing, replies and a private backup.
 @Observable
 final class AppModel {
     enum Phase: Equatable {
         case launching
-        case notConfigured
-        case signedOut
-        case needsProfile
+        /// First launch: the welcome and the optional weekly reminder.
+        case welcome
         case ready
+    }
+
+    enum Account: Equatable {
+        case signedOut
+        /// Signed in, but hasn't chosen a name yet.
+        case needsProfile
+        case signedIn
     }
 
     enum Tab: Hashable {
@@ -20,22 +27,26 @@ final class AppModel {
     }
 
     let api: API?
+    let context: ModelContext
     var phase: Phase = .launching
+    var account: Account = .signedOut
     var profile: MyProfile?
     var flags = AppFlags(requirePostToRead: AppConfig.requirePostToReadDefault, mondayCutoffHour: AppConfig.mondayCutoffHour, shareLinkDays: AppConfig.shareLinkLifetimeDays, appStoreUrl: nil)
     var friends: [Friend] = []
     var circles: [CircleRow] = []
-    var dictionary: [DictionaryRow] = []
     var unreadReplies = 0
 
     var selectedTab: Tab = .week
     var composerRequested = false
-    /// An invite token from a share link opened before (or while) signing in.
+    /// Opens the account sheet (sign in, name, backup, find friends).
+    var accountFlowRequested = false
+    /// An invite token from a share link, accepted once there's an account.
     var pendingInvite: String?
     var toast: Toast?
 
     let learning = LearningStore()
     let engines = EngineSettings()
+    let words = DictionaryStore()
 
     struct Toast: Equatable, Identifiable {
         let id = UUID()
@@ -43,77 +54,106 @@ final class AppModel {
         var systemImage: String = "checkmark.circle.fill"
     }
 
-    init() {
+    private static let welcomedKey = "hasSeenWelcome"
+
+    init(context: ModelContext) {
+        self.context = context
         api = API()
-        if LaunchOptions.arguments.contains("-resetState") { Self.resetLocalState() }
+        if LaunchOptions.arguments.contains("-resetState") { Self.resetPreferences() }
     }
 
+    var isSignedIn: Bool { account == .signedIn }
+    /// Accounts need a backend; a build without one is a private journal only.
+    var accountsAvailable: Bool { api != nil }
     var acceptedFriends: [Friend] { friends.filter(\.isAccepted) }
     var incomingRequests: [Friend] { friends.filter(\.isIncomingRequest) }
 
+    /// Your week, in this phone's time zone (weeks run Monday to Sunday, and Monday morning
+    /// still counts toward the week that just ended).
     var currentWeek: LocalDate {
-        profile?.weekStart ?? Week.start(for: Date(), in: .current, mondayCutoffHour: flags.mondayCutoffHour)
+        Week.start(for: Date(), in: .current, mondayCutoffHour: flags.mondayCutoffHour)
     }
 
-    var timeZone: TimeZone { profile.flatMap { TimeZone(identifier: $0.timezone) } ?? .current }
-
-    // MARK: Session
+    // MARK: Launch
 
     func start() async {
-        guard let api else {
-            phase = .notConfigured
-            return
-        }
         #if DEBUG
-        if LaunchOptions.arguments.contains("-signedOutForTest") { await api.signOut() }
-        if let email = LaunchOptions.signInAs {
+        if LaunchOptions.arguments.contains("-signedOutForTest") { await api?.signOut() }
+        if let email = LaunchOptions.signInAs, let api {
             await api.signOut()
             try? await api.signIn(email: email, password: LaunchOptions.devPassword)
+            UserDefaults.standard.set(true, forKey: Self.welcomedKey)
         }
+        if LaunchOptions.arguments.contains("-skipWelcome") { UserDefaults.standard.set(true, forKey: Self.welcomedKey) }
         #endif
-        if await api.restoreSession() == nil {
-            phase = .signedOut
-            return
+        phase = UserDefaults.standard.bool(forKey: Self.welcomedKey) ? .ready : .welcome
+        await LocalReminders.reschedule(context: context)
+        if let api, await api.restoreSession() != nil {
+            await loadProfile()
         }
-        await loadProfile()
     }
+
+    func finishWelcome(signIn: Bool = false) {
+        UserDefaults.standard.set(true, forKey: Self.welcomedKey)
+        phase = .ready
+        if signIn { accountFlowRequested = true }
+    }
+
+    // MARK: Account
 
     func loadProfile() async {
-        guard let api else { return }
+        guard let api, api.accountID != nil else {
+            account = .signedOut
+            return
+        }
         do {
             profile = try await api.myProfile()
-            phase = profile == nil ? .needsProfile : .ready
-            if phase == .ready { await afterSignIn() }
+            account = profile == nil ? .needsProfile : .signedIn
         } catch {
-            // Offline at launch with a stored session: keep the user in, show errors per screen
-            phase = profile == nil ? .needsProfile : .ready
+            // Offline with a stored session: treat it as signed in and let screens show errors
+            account = profile == nil ? .needsProfile : .signedIn
+        }
+        if account == .signedIn {
+            await afterSignIn()
+        } else if account == .needsProfile {
+            accountFlowRequested = true
         }
     }
 
-    func signedIn() async {
-        await loadProfile()
+    private func afterSignIn() async {
+        guard let api else { return }
+        if let token = pendingInvite {
+            pendingInvite = nil
+            await accept(invite: token)
+        }
+        // The account follows the phone's time zone, which decides which week a post belongs to
+        if let profile, profile.timezone != TimeZone.current.identifier {
+            try? await api.updateProfile(.init(timezone: TimeZone.current.identifier))
+        }
+        async let flagsLoaded: Void = refreshFlags()
+        async let social: Void = refreshSocial()
+        async let inbox: Void = refreshUnread()
+        _ = await (flagsLoaded, social, inbox)
+        await words.sync(api: api)
+        await syncWeeks()
+    }
+
+    /// Backs up weeks saved on this phone and brings down weeks written elsewhere.
+    func syncWeeks() async {
+        guard let api, isSignedIn else { return }
+        try? await EntrySync.downloadOwn(api: api, context: context)
+        await EntrySync.uploadPending(api: api, context: context)
+        await LocalReminders.reschedule(context: context)
     }
 
     func signOut() async {
         await api?.signOut()
         profile = nil
+        account = .signedOut
         friends = []
         circles = []
-        dictionary = []
-        phase = .signedOut
-    }
-
-    private func afterSignIn() async {
-        if let token = pendingInvite {
-            pendingInvite = nil
-            await accept(invite: token)
-        }
-        async let flagsLoaded: Void = refreshFlags()
-        async let social: Void = refreshSocial()
-        async let words: Void = refreshDictionary()
-        async let inbox: Void = refreshUnread()
-        _ = await (flagsLoaded, social, words, inbox)
-        PushService.shared.register(api: api)
+        unreadReplies = 0
+        selectedTab = .week
     }
 
     func refreshFlags() async {
@@ -121,23 +161,44 @@ final class AppModel {
     }
 
     func refreshSocial() async {
-        guard let api else { return }
+        guard let api, isSignedIn else { return }
         async let f = api.friends()
         async let c = api.circles()
         if let friends = try? await f { self.friends = friends }
         if let circles = try? await c { self.circles = circles }
     }
 
-    func refreshDictionary() async {
-        if let rows = try? await api?.dictionary() { dictionary = rows }
-    }
-
     func refreshUnread() async {
+        guard isSignedIn else { return }
         if let threads = try? await api?.inbox() { unreadReplies = threads.reduce(0) { $0 + $1.unread } }
     }
 
     func refreshProfile() async {
         if let profile = try? await api?.myProfile() { self.profile = profile }
+    }
+
+    // MARK: Saving a week
+
+    /// After a week is saved: plan reminders again (that week no longer needs one) and, with an
+    /// account, back it up and share it. Returns a line for the toast.
+    func didSave(_ entry: Entry) async -> String {
+        await LocalReminders.reschedule(context: context)
+        guard let api, isSignedIn else { return "Saved" }
+        do {
+            try await EntrySync.upload(entry, api: api, context: context)
+            let names = circles.filter { (entry.circleIDs ?? []).contains($0.id) }.map(\.name)
+            return names.isEmpty ? "Saved" : "Shared with \(names.formatted(.list(type: .and)))"
+        } catch {
+            entry.needsSync = true
+            try? context.save()
+            return "Saved. It'll be shared when you're back online."
+        }
+    }
+
+    func delete(_ entry: Entry) async {
+        if let api, isSignedIn { await EntrySync.deleteRemote(entry, api: api) }
+        EntryStore.delete(entry, in: context)
+        await LocalReminders.reschedule(context: context)
     }
 
     // MARK: Deep links
@@ -150,10 +211,11 @@ final class AppModel {
             return
         }
         guard let token = DeepLink.inviteToken(from: url) else { return }
-        if phase == .ready {
+        if isSignedIn {
             Task { await accept(invite: token) }
         } else {
             pendingInvite = token
+            accountFlowRequested = accountsAvailable
         }
     }
 
@@ -181,23 +243,33 @@ final class AppModel {
         Vocabulary.build(
             friends: acceptedFriends.map { Vocabulary.Friend(name: $0.displayName, lastInteraction: $0.since) },
             circles: circles.map(\.name),
-            dictionary: dictionary.map(\.entry)
+            dictionary: words.entries
         )
     }
 
-    /// Friends' names are automatic dictionary entries (PRD §8, stage 3), not stored rows.
+    /// Friends' names are automatic dictionary entries (PRD §8, stage 3), not stored words.
     var dictionaryEntries: [DictionaryEntry] {
-        dictionary.map(\.entry) + acceptedFriends.flatMap { friend -> [DictionaryEntry] in
+        words.entries + acceptedFriends.flatMap { friend -> [DictionaryEntry] in
             let parts = friend.displayName.split(separator: " ").map(String.init)
             return [DictionaryEntry(written: friend.displayName)] + (parts.count > 1 ? parts.map { DictionaryEntry(written: $0) } : [])
         }
     }
 
-    static func resetLocalState() {
+    // MARK: Erasing
+
+    /// Settings → Erase this iPhone's weeks: every entry, file, word and scheduled reminder.
+    func eraseLocalData() {
+        for entry in (try? context.fetch(FetchDescriptor<Entry>())) ?? [] { context.delete(entry) }
+        try? context.save()
+        EntryStore.deleteAllFiles()
+        words.eraseLocal()
+        LocalReminders.cancelAll()
+    }
+
+    static func resetPreferences() {
         if let domain = Bundle.main.bundleIdentifier {
             UserDefaults.standard.removePersistentDomain(forName: domain)
         }
-        DraftStore.deleteAllFiles()
     }
 }
 

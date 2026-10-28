@@ -51,7 +51,7 @@ final class EngineSettings {
     static func makeEngine(_ id: String, api: API?) -> any TranscriptionEngine {
         switch id {
         case "whisperkit-turbo": return WhisperKitEngine.shared
-        case "openai-hosted": return OpenAIHostedEngine(accessToken: { [weak api] in await api?.accessToken() })
+        case "openai-hosted": return OpenAIHostedEngine(accessToken: { [weak api] in await api?.hostedToken() })
         case "apple-sfspeech": return LegacySpeechEngine()
         default:
             if #available(iOS 26.0, *) {
@@ -86,7 +86,7 @@ final class EngineSettings {
 
     func hostedFormatter(api: API?) -> HostedFormatter? {
         guard let functions = AppEnvironment.functionsURL else { return nil }
-        return HostedFormatter(functionsURL: functions, apiKey: AppEnvironment.supabaseAnonKey, accessToken: { [weak api] in await api?.accessToken() })
+        return HostedFormatter(functionsURL: functions, apiKey: AppEnvironment.supabaseAnonKey, accessToken: { [weak api] in await api?.hostedToken() })
     }
 
     /// Apple's on-device formatter, or nil before iOS 26 (and when turned off for testing).

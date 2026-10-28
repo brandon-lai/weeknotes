@@ -259,3 +259,29 @@ extension Date {
         return formatted(.dateTime.month(.abbreviated).day())
     }
 }
+
+/// A photo in one of your weeks: the local file when this iPhone has it, else the uploaded copy.
+struct EntryPhoto: View {
+    let entry: Entry
+    let item: String
+    var contentMode: ContentMode = .fill
+
+    var body: some View {
+        if let image = localImage {
+            Theme.hairline.opacity(0.4)
+                .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+                .overlay { Image(uiImage: image).resizable().aspectRatio(contentMode: contentMode) }
+                .clipped()
+                .accessibilityLabel("Photo")
+        } else if item.hasPrefix("remote:") {
+            StoredPhoto(photo: PhotoInfo(storagePath: String(item.dropFirst(7)), position: 0), contentMode: contentMode)
+        } else {
+            Theme.hairline
+        }
+    }
+
+    private var localImage: UIImage? {
+        let name = item.hasPrefix("remote:") ? EntrySync.cacheName(for: String(item.dropFirst(7))) : item
+        return UIImage(contentsOfFile: entry.folder.appending(path: name).path(percentEncoded: false))
+    }
+}

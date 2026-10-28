@@ -49,7 +49,7 @@ struct WeeknotesTests {
             pPhotos: []
         )
         let object = try JSONSerialization.jsonObject(with: API.encoder.encode(request)) as! [String: Any]
-        #expect(Set(object.keys) == ["p_id", "p_prompt", "p_body", "p_raw_transcript", "p_composed_with", "p_compose_ms", "p_circles", "p_memo", "p_photos"])
+        #expect(Set(object.keys) == ["p_id", "p_prompt", "p_body", "p_raw_transcript", "p_composed_with", "p_compose_ms", "p_circles", "p_memo", "p_photos", "p_week_start", "p_posted_at"])
         let memo = object["p_memo"] as! [String: Any]
         #expect(memo["storage_path"] as? String == "x")
         #expect(memo["engine_id"] as? String == "apple-speech")

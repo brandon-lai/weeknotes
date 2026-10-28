@@ -1,56 +1,68 @@
 import AuthenticationServices
+import SwiftData
 import SwiftUI
 import WeeknotesCore
 
-/// Sign in with Apple, then name, time zone and reminder time (M0), then the optional steps:
-/// phone number (for contact matching), contacts, notifications (PRD §11, screen 1).
-struct OnboardingView: View {
+/// Creating an account (or signing in) to connect with friends: Sign in with Apple, a name,
+/// backing up the weeks already on this iPhone, then the optional phone number and contacts.
+/// Opened from the Friends tab, Settings, or a share link.
+struct AccountFlowView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
 
-    enum Step: Int, CaseIterable {
-        case welcome, profile, phone, contacts, reminders
+    enum Step: Hashable {
+        case signIn, profile, backup, phone, contacts
     }
 
-    @State private var step: Step = .welcome
+    @State private var step: Step = .signIn
     @State private var suggestedName = ""
 
     var body: some View {
         NavigationStack {
             Group {
                 switch step {
-                case .welcome:
-                    WelcomeStep(suggestedName: $suggestedName) { advanceAfterSignIn() }
+                case .signIn:
+                    SignInStep(suggestedName: $suggestedName) { Task { await afterSignIn() } }
                 case .profile:
-                    ProfileStep(suggestedName: suggestedName) { step = .phone }
+                    ProfileStep(suggestedName: suggestedName) { step = .backup }
+                case .backup:
+                    BackupStep { step = .phone }
                 case .phone:
                     PhoneStep { step = .contacts }
                 case .contacts:
-                    ContactsStep { step = .reminders }
-                case .reminders:
-                    RemindersStep { Task { await model.loadProfile() } }
+                    ContactsStep { dismiss() }
                 }
             }
             .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
             .animation(.smooth, value: step)
             .paperBackground()
+            .toolbar {
+                if step == .signIn {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Not now") { dismiss() }.accessibilityIdentifier("accountNotNow")
+                    }
+                }
+            }
         }
+        .interactiveDismissDisabled(step == .profile)
         .onAppear {
-            if model.phase == .needsProfile { step = .profile }
-        }
-        .onChange(of: model.phase) { _, phase in
-            if phase == .needsProfile && step == .welcome { step = .profile }
+            if model.account == .needsProfile { step = .profile }
         }
     }
 
-    private func advanceAfterSignIn() {
-        Task {
-            await model.signedIn()
-            if model.phase == .needsProfile { step = .profile }
+    private func afterSignIn() async {
+        await model.loadProfile()
+        switch model.account {
+        case .needsProfile: step = .profile
+        case .signedIn: step = .backup
+        case .signedOut: break
         }
     }
 }
 
-private struct WelcomeStep: View {
+// MARK: - Sign in
+
+private struct SignInStep: View {
     @Environment(AppModel.self) private var model
     @Binding var suggestedName: String
     let onSignedIn: () -> Void
@@ -60,30 +72,15 @@ private struct WelcomeStep: View {
     @State private var showDevSignIn = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 18) {
             Spacer()
-            Image(systemName: "book.pages")
-                .font(.system(size: 52, weight: .light))
-                .foregroundStyle(Theme.accent)
-                .padding(.bottom, 20)
-            Text("Weeknotes")
-                .font(.system(size: 44, weight: .semibold, design: .serif))
-                .foregroundStyle(Theme.ink)
-            Text("Once a week, tell your friends how it went.")
-                .font(Theme.body(22))
+            Image(systemName: "person.2.wave.2").font(.system(size: 46, weight: .light)).foregroundStyle(Theme.accent)
+            Text("Connect with friends").font(Theme.titleFont).foregroundStyle(Theme.ink)
+            Text("An account lets you find friends, put them in circles, and share your weeks with the circles you pick. Your weeks stay private unless you share them, and they're backed up to your account.")
                 .foregroundStyle(Theme.secondaryInk)
-                .padding(.top, 6)
-
-            VStack(alignment: .leading, spacing: 16) {
-                Principle(systemImage: "square.and.pencil", text: "Write, dictate or record a voice memo. About five minutes.")
-                Principle(systemImage: "person.3", text: "Post once. It reaches every circle you choose.")
-                Principle(systemImage: "books.vertical", text: "Every week saves to your own archive, even if you share it with no one.")
-            }
-            .padding(.top, 36)
             Spacer()
-
             if let error {
-                Text(error).font(.footnote).foregroundStyle(.red).padding(.bottom, 10)
+                Text(error).font(.footnote).foregroundStyle(.red)
             }
             SignInWithAppleButton(.continue) { request in
                 request.requestedScopes = [.fullName]
@@ -99,14 +96,12 @@ private struct WelcomeStep: View {
             Button("Developer sign-in") { showDevSignIn = true }
                 .font(.footnote)
                 .frame(maxWidth: .infinity)
-                .padding(.top, 12)
                 .accessibilityIdentifier("devSignIn")
             #endif
             Link("Privacy policy", destination: AppEnvironment.privacyPolicyURL)
                 .font(.footnote)
                 .foregroundStyle(Theme.secondaryInk)
                 .frame(maxWidth: .infinity)
-                .padding(.top, 10)
         }
         .padding(.horizontal, 28)
         .padding(.bottom, 20)
@@ -145,18 +140,6 @@ private struct WelcomeStep: View {
     }
 }
 
-private struct Principle: View {
-    let systemImage: String
-    let text: String
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 14) {
-            Image(systemName: systemImage).foregroundStyle(Theme.accent).frame(width: 24)
-            Text(text).font(.body).foregroundStyle(Theme.ink)
-        }
-    }
-}
-
 #if DEBUG
 /// Signs in the seeded local accounts (`scripts/seed-local.ts`). Not in Release builds.
 struct DevSignInView: View {
@@ -166,7 +149,7 @@ struct DevSignInView: View {
     @State private var email = "ana@weeknotes.test"
     @State private var error: String?
 
-    static let seeded = ["ana@weeknotes.test", "ben@weeknotes.test", "cal@weeknotes.test", "new@weeknotes.test", "nora@weeknotes.test"]
+    static let seeded = ["ana@weeknotes.test", "ben@weeknotes.test", "cal@weeknotes.test", "new@weeknotes.test", "nora@weeknotes.test", "writer@weeknotes.test"]
 
     var body: some View {
         NavigationStack {
@@ -206,14 +189,13 @@ struct DevSignInView: View {
 }
 #endif
 
+// MARK: - Profile
+
 private struct ProfileStep: View {
     @Environment(AppModel.self) private var model
     let suggestedName: String
     let onDone: () -> Void
     @State private var name = ""
-    @State private var timezone = TimeZone.current.identifier
-    @State private var weekday = AppConfig.defaultReminderWeekday
-    @State private var time = Calendar.current.date(from: DateComponents(hour: 18, minute: 0)) ?? Date()
     @State private var saving = false
     @State private var error: String?
     @FocusState private var nameFocused: Bool
@@ -222,9 +204,8 @@ private struct ProfileStep: View {
         Form {
             Section {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("What should friends call you?")
-                        .font(Theme.headingFont)
-                    Text("This shows on your updates.").font(.subheadline).foregroundStyle(Theme.secondaryInk)
+                    Text("What should friends call you?").font(Theme.headingFont)
+                    Text("This shows on the weeks you share.").font(.subheadline).foregroundStyle(Theme.secondaryInk)
                 }
                 .listRowBackground(Color.clear)
                 TextField("Your name", text: $name)
@@ -232,26 +213,10 @@ private struct ProfileStep: View {
                     .focused($nameFocused)
                     .accessibilityIdentifier("nameField")
             }
-            Section {
-                TimeZonePicker(identifier: $timezone)
-            } header: {
-                Text("Time zone")
-            } footer: {
-                Text("Your week runs Monday to Sunday here. Posts before Monday noon still count for the week before.")
-            }
-            Section {
-                ReminderPicker(weekday: $weekday, time: $time)
-            } header: {
-                Text("Weekly reminder")
-            } footer: {
-                Text("We'll nudge you once a week, only if you haven't posted yet.")
-            }
-            if let error {
-                Text(error).foregroundStyle(.red)
-            }
+            if let error { Text(error).foregroundStyle(.red) }
         }
         .scrollContentBackground(.hidden)
-        .navigationTitle("Your profile")
+        .navigationTitle("Your name")
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Continue") { save() }
@@ -267,17 +232,17 @@ private struct ProfileStep: View {
 
     private func save() {
         saving = true
+        let reminder = LocalReminders.settings
         Task {
             defer { saving = false }
             do {
-                let components = Calendar.current.dateComponents([.hour, .minute], from: time)
                 try await model.api?.createProfile(
                     name: name.trimmingCharacters(in: .whitespaces),
-                    timezone: timezone,
-                    reminderWeekday: weekday,
-                    reminderTime: String(format: "%02d:%02d", components.hour ?? 18, components.minute ?? 0)
+                    timezone: TimeZone.current.identifier,
+                    reminderWeekday: reminder.weekday,
+                    reminderTime: String(format: "%02d:%02d", reminder.hour, reminder.minute)
                 )
-                await model.refreshProfile()
+                await model.loadProfile()
                 onDone()
             } catch {
                 self.error = friendlyMessage(error)
@@ -286,66 +251,48 @@ private struct ProfileStep: View {
     }
 }
 
-struct TimeZonePicker: View {
-    @Binding var identifier: String
+// MARK: - Backup
+
+/// The weeks already on this iPhone go to the account, privately.
+private struct BackupStep: View {
+    @Environment(AppModel.self) private var model
+    let onDone: () -> Void
+    @State private var done = false
+
+    var count: Int { EntryStore.saved(in: model.context).count }
 
     var body: some View {
-        NavigationLink {
-            TimeZoneList(selection: $identifier)
-        } label: {
-            LabeledContent("Time zone", value: Self.label(identifier))
-        }
-    }
-
-    static func label(_ identifier: String) -> String {
-        let city = identifier.split(separator: "/").last.map { $0.replacingOccurrences(of: "_", with: " ") } ?? identifier
-        let abbreviation = TimeZone(identifier: identifier)?.abbreviation() ?? ""
-        return abbreviation.isEmpty ? city : "\(city) (\(abbreviation))"
-    }
-}
-
-private struct TimeZoneList: View {
-    @Binding var selection: String
-    @Environment(\.dismiss) private var dismiss
-    @State private var search = ""
-
-    var zones: [String] {
-        let all = TimeZone.knownTimeZoneIdentifiers.filter { $0.contains("/") }
-        guard !search.isEmpty else { return all }
-        return all.filter { $0.localizedCaseInsensitiveContains(search.replacingOccurrences(of: " ", with: "_")) }
-    }
-
-    var body: some View {
-        List(zones, id: \.self) { zone in
+        VStack(alignment: .leading, spacing: 18) {
+            Spacer()
+            Image(systemName: done ? "checkmark.icloud" : "icloud.and.arrow.up")
+                .font(.system(size: 46, weight: .light))
+                .foregroundStyle(Theme.accent)
+                .contentTransition(.symbolEffect(.replace))
+            Text(done ? "You're all set" : "Backing up your weeks").font(Theme.titleFont).foregroundStyle(Theme.ink)
+            Text(count == 0
+                 ? "Weeks you write from now on are backed up to your account, privately."
+                 : "Your \(count == 1 ? "week" : "\(count) weeks") on this iPhone \(done ? "are" : "are being") backed up to your account. Nobody sees them unless you share them.")
+                .foregroundStyle(Theme.secondaryInk)
+            if !done { ProgressView() }
+            Spacer()
             Button {
-                selection = zone
-                dismiss()
+                onDone()
             } label: {
-                HStack {
-                    Text(TimeZonePicker.label(zone)).foregroundStyle(Theme.ink)
-                    Spacer()
-                    if zone == selection { Image(systemName: "checkmark").foregroundStyle(Theme.accent) }
-                }
+                Text("Next: find friends").font(.headline).frame(maxWidth: .infinity).padding(.vertical, 6)
             }
+            .glassProminentButton()
+            .disabled(!done)
+            .accessibilityIdentifier("backupNext")
         }
-        .searchable(text: $search, prompt: "City")
-        .navigationTitle("Time zone")
+        .padding(28)
+        .task {
+            await model.syncWeeks()
+            withAnimation { done = true }
+        }
     }
 }
 
-struct ReminderPicker: View {
-    @Binding var weekday: Int
-    @Binding var time: Date
-
-    var body: some View {
-        Picker("Day", selection: $weekday) {
-            ForEach(0..<7, id: \.self) { day in
-                Text(Calendar.current.weekdaySymbols[day]).tag(day)
-            }
-        }
-        DatePicker("Time", selection: $time, displayedComponents: .hourAndMinute)
-    }
-}
+// MARK: - Phone and contacts
 
 private struct PhoneStep: View {
     @Environment(AppModel.self) private var model
@@ -428,59 +375,71 @@ private struct PhoneStep: View {
 }
 
 private struct ContactsStep: View {
-    @Environment(AppModel.self) private var model
     let onDone: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("Find your friends").font(Theme.titleFont).foregroundStyle(Theme.ink)
-            Text("Weeknotes can check your contacts for friends who are already here. Numbers are scrambled on your phone before anything is sent, and nothing is stored.")
-                .foregroundStyle(Theme.secondaryInk)
-            FindFriendsView(compact: true)
-            Spacer()
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                Text("Find your friends").font(Theme.titleFont).foregroundStyle(Theme.ink)
+                Text("Weeknotes can check your contacts for friends who are already here. Numbers are scrambled on your phone before anything is sent, and nothing is stored.")
+                    .foregroundStyle(Theme.secondaryInk)
+                FindFriendsView(compact: true)
+            }
+            .padding(24)
         }
-        .padding(24)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Next", action: onDone).accessibilityIdentifier("contactsNext")
+                Button("Done", action: onDone).accessibilityIdentifier("contactsNext")
             }
         }
     }
 }
 
-private struct RemindersStep: View {
-    @Environment(AppModel.self) private var model
-    let onDone: () -> Void
+// MARK: - Shared pickers
 
-    var reminderText: String {
-        guard let profile = model.profile else { return "once a week" }
-        let day = Calendar.current.weekdaySymbols[profile.reminderWeekday]
-        let time = Calendar.current.date(from: profile.reminderComponents)?.formatted(date: .omitted, time: .shortened) ?? ""
-        return "\(day) at \(time)"
+struct TimeZonePicker: View {
+    @Binding var identifier: String
+
+    var body: some View {
+        NavigationLink {
+            TimeZoneList(selection: $identifier)
+        } label: {
+            LabeledContent("Time zone", value: Self.label(identifier))
+        }
+    }
+
+    static func label(_ identifier: String) -> String {
+        let city = identifier.split(separator: "/").last.map { $0.replacingOccurrences(of: "_", with: " ") } ?? identifier
+        let abbreviation = TimeZone(identifier: identifier)?.abbreviation() ?? ""
+        return abbreviation.isEmpty ? city : "\(city) (\(abbreviation))"
+    }
+}
+
+private struct TimeZoneList: View {
+    @Binding var selection: String
+    @Environment(\.dismiss) private var dismiss
+    @State private var search = ""
+
+    var zones: [String] {
+        let all = TimeZone.knownTimeZoneIdentifiers.filter { $0.contains("/") }
+        guard !search.isEmpty else { return all }
+        return all.filter { $0.localizedCaseInsensitiveContains(search.replacingOccurrences(of: " ", with: "_")) }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Spacer()
-            Image(systemName: "bell.badge").font(.system(size: 44, weight: .light)).foregroundStyle(Theme.accent)
-            Text("A nudge, once a week").font(Theme.titleFont).foregroundStyle(Theme.ink)
-            Text("On \(reminderText) we'll remind you that your week is ready to write, unless you've already posted.")
-                .foregroundStyle(Theme.secondaryInk)
-            Spacer()
+        List(zones, id: \.self) { zone in
             Button {
-                Task {
-                    _ = await PushService.shared.requestPermission()
-                    onDone()
-                }
+                selection = zone
+                dismiss()
             } label: {
-                Text("Turn on reminders").frame(maxWidth: .infinity).padding(.vertical, 6)
+                HStack {
+                    Text(TimeZonePicker.label(zone)).foregroundStyle(Theme.ink)
+                    Spacer()
+                    if zone == selection { Image(systemName: "checkmark").foregroundStyle(Theme.accent) }
+                }
             }
-            .glassProminentButton()
-            .accessibilityIdentifier("enableReminders")
-            Button("Not now", action: onDone)
-                .frame(maxWidth: .infinity)
-                .accessibilityIdentifier("remindersNotNow")
         }
-        .padding(28)
+        .searchable(text: $search, prompt: "City")
+        .navigationTitle("Time zone")
     }
 }

@@ -65,6 +65,7 @@ for (const person of people) {
 // Accounts with no profile yet: onboarding, and the contacts flow (M4)
 await admin.auth.admin.createUser({ email: "new@weeknotes.test", password: PASSWORD, email_confirm: true });
 await admin.auth.admin.createUser({ email: "nora@weeknotes.test", password: PASSWORD, email_confirm: true });
+await admin.auth.admin.createUser({ email: "writer@weeknotes.test", password: PASSWORD, email_confirm: true });
 
 for (const p of people) {
   await sql`insert into public.profiles (id, display_name, timezone, reminder_weekday, reminder_time)

@@ -4,14 +4,16 @@ import SwiftUI
 import WeeknotesCore
 
 /// The composer (PRD §11, screen 4): type, dictate, record a memo, add up to 4 photos, pick an
-/// optional prompt and the circles, then post. Everything is saved to the week's draft as you go.
+/// optional prompt, then save. Everything is kept on the phone as you go; with an account you can
+/// also choose circles to share the week with.
 struct ComposerView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
-    var editing: UpdateRow?
+    /// The week to write or edit; the current week when nil.
+    var editingWeek: LocalDate?
 
-    @State private var draft: Draft?
+    @State private var draft: Entry?
     @State private var editor = EditorController()
     @State private var dictation = DictationSession()
     @State private var lastDictation: Insertion?
@@ -36,7 +38,8 @@ struct ComposerView: View {
         let skipped: Bool
     }
 
-    var week: LocalDate { editing?.weekStart ?? model.currentWeek }
+    var week: LocalDate { editingWeek ?? model.currentWeek }
+    var isEditingSaved: Bool { draft?.isSaved == true }
 
     var body: some View {
         NavigationStack {
@@ -48,7 +51,7 @@ struct ComposerView: View {
                 }
             }
             .paperBackground()
-            .navigationTitle(editing == nil ? "Your week" : "Edit your week")
+            .navigationTitle(week == model.currentWeek ? "Your week" : "Week of \(Week.label(for: week))")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbar }
         }
@@ -70,7 +73,7 @@ struct ComposerView: View {
 
     // MARK: Layout
 
-    private func editorScreen(_ draft: Draft) -> some View {
+    private func editorScreen(_ draft: Entry) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             audienceRow(draft)
                 .padding(.horizontal, 20)
@@ -118,31 +121,46 @@ struct ComposerView: View {
         }
     }
 
-    private func audienceRow(_ draft: Draft) -> some View {
-        Button { showAudience = true } label: {
+    @ViewBuilder
+    private func audienceRow(_ draft: Entry) -> some View {
+        if model.isSignedIn {
+            Button { showAudience = true } label: {
+                HStack(spacing: 8) {
+                    Text("Share with").foregroundStyle(Theme.secondaryInk)
+                    Text(audienceSummary(draft)).foregroundStyle(Theme.ink).lineLimit(1)
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(Theme.secondaryInk)
+                }
+                .font(.subheadline)
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("audienceRow")
+            .accessibilityLabel("Audience: \(audienceSummary(draft))")
+        } else {
             HStack(spacing: 8) {
-                Text("To").foregroundStyle(Theme.secondaryInk)
-                Text(audienceSummary(draft)).foregroundStyle(Theme.ink).lineLimit(1)
+                Label("Just for you, on this iPhone", systemImage: "lock")
+                    .foregroundStyle(Theme.secondaryInk)
                 Spacer()
-                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Theme.secondaryInk)
+                if model.accountsAvailable {
+                    Button("Share with friends") { model.accountFlowRequested = true }
+                        .font(.subheadline.weight(.semibold))
+                        .accessibilityIdentifier("composerConnect")
+                }
             }
             .font(.subheadline)
-            .contentShape(.rect)
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("audienceRow")
-        .accessibilityLabel("Audience: \(audienceSummary(draft))")
     }
 
-    private func audienceSummary(_ draft: Draft) -> String {
+    private func audienceSummary(_ draft: Entry) -> String {
         let ids = Set(draft.circleIDs ?? lastAudience ?? [])
         let names = model.circles.filter { ids.contains($0.id) }.map(\.name)
-        if names.isEmpty { return model.circles.isEmpty ? "Only you (archive)" : "Only you (archive) · choose circles" }
+        if names.isEmpty { return model.circles.isEmpty ? "Only you" : "Only you · choose circles" }
         return names.formatted(.list(type: .and))
     }
 
     @ViewBuilder
-    private func promptArea(_ draft: Draft) -> some View {
+    private func promptArea(_ draft: Entry) -> some View {
         if let prompt = draft.prompt {
             HStack {
                 Text(prompt).font(Theme.body(18)).italic().foregroundStyle(Theme.secondaryInk)
@@ -213,7 +231,7 @@ struct ComposerView: View {
     }
 
     @ViewBuilder
-    private func attachments(_ draft: Draft) -> some View {
+    private func attachments(_ draft: Entry) -> some View {
         if draft.memoFileName != nil || draft.memoRemotePath != nil {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
@@ -247,7 +265,7 @@ struct ComposerView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(draft.photoItems, id: \.self) { item in
-                        DraftPhoto(draft: draft, item: item)
+                        EntryPhoto(entry: draft, item: item)
                             .frame(width: 96, height: 96)
                             .clipShape(.rect(cornerRadius: 12))
                             .overlay(alignment: .topTrailing) {
@@ -267,7 +285,7 @@ struct ComposerView: View {
         }
     }
 
-    private func bottomBar(_ draft: Draft) -> some View {
+    private func bottomBar(_ draft: Entry) -> some View {
         GlassGroup(spacing: 14) {
             HStack(spacing: 14) {
                 Button {
@@ -346,7 +364,8 @@ struct ComposerView: View {
             Button {
                 dictation.cancel()
                 MemoPlayer.shared.stopAll()
-                if draft?.hasContent == true && editing == nil { confirmDiscard = true } else { cleanUpAndDismiss() }
+                // A draft with writing in it asks; a saved week keeps its changes as a draft edit
+                if draft?.hasContent == true && !isEditingSaved { confirmDiscard = true } else { dismiss() }
             } label: {
                 Image(systemName: "xmark")
             }
@@ -354,69 +373,48 @@ struct ComposerView: View {
             .accessibilityIdentifier("closeComposer")
         }
         ToolbarItem(placement: .confirmationAction) {
-            Button(editing == nil ? "Post" : "Save") { post() }
+            Button(saveTitle) { saveEntry() }
                 .glassProminentButton()
                 .disabled(!(draft?.hasContent ?? false) || posting || dictation.isActive)
                 .accessibilityIdentifier("postButton")
         }
     }
 
-    // MARK: Draft
+    // MARK: Entry
 
-    private func loadDraft() async {
-        if let lastAudience = try? await model.api?.lastAudience() { self.lastAudience = lastAudience }
-        if let existing = DraftStore.draft(for: week, in: context) {
-            draft = existing
-            return
-        }
-        let new = Draft(weekStart: week, updateID: editing?.id ?? UUID())
-        if let editing {
-            new.isEditingPosted = true
-            new.body = editing.bodyText ?? ""
-            new.prompt = editing.prompt
-            new.rawTranscript = editing.bodyRawTranscript
-            new.composedWith = editing.composedWith
-            new.circleIDs = editing.audienceIDs
-            if let memo = editing.voiceMemos {
-                new.memoRemotePath = memo.storagePath
-                new.memoDurationMs = memo.durationMs
-                new.memoWaveform = memo.waveform
-                new.memoTranscriptRaw = memo.transcriptRaw
-                new.memoTranscriptClean = memo.transcriptClean
-            }
-            new.photoItems = editing.photos.map { "remote:\($0.storagePath)" }
-        }
-        context.insert(new)
-        save()
-        draft = new
+    private var saveTitle: String {
+        guard model.isSignedIn, let draft else { return "Save" }
+        return (draft.circleIDs ?? lastAudience ?? []).isEmpty ? "Save" : "Share"
     }
 
+    private func loadDraft() async {
+        if let existing = EntryStore.entry(for: week, in: context) {
+            draft = existing
+        } else {
+            let new = Entry(weekStart: week)
+            context.insert(new)
+            save()
+            draft = new
+        }
+        if model.isSignedIn, draft?.circleIDs == nil, let lastAudience = try? await model.api?.lastAudience() {
+            self.lastAudience = lastAudience
+        }
+    }
+
+    /// Every change is kept immediately, so nothing is lost if the app is closed.
     private func save() {
-        draft?.updatedAt = Date()
+        draft?.touch()
         try? context.save()
     }
 
     private func discardDraft() {
-        if let draft {
-            DraftStore.deleteFiles(for: draft.updateID)
-            context.delete(draft)
-            try? context.save()
-        }
-        dismiss()
-    }
-
-    private func cleanUpAndDismiss() {
-        if let draft, editing != nil {
-            // Editing never leaves a draft behind: the posted update is the source of truth
-            context.delete(draft)
-            try? context.save()
-        }
+        if let draft { EntryStore.delete(draft, in: context) }
         dismiss()
     }
 
     // MARK: Dictation
 
-    private func toggleDictation(_ draft: Draft) async {
+    private func toggleDictation(_ draft: Entry) async {
         if dictation.state == .listening {
             guard let result = await dictation.stop() else {
                 if case .failed(let message) = dictation.state { error = message }
@@ -438,7 +436,7 @@ struct ComposerView: View {
         }
     }
 
-    private func insert(_ result: FormattedResult, into draft: Draft) {
+    private func insert(_ result: FormattedResult, into draft: Entry) {
         let text = result.formatted.isEmpty ? result.raw : result.formatted
         programmaticEdit = true
         defer { programmaticEdit = false }
@@ -476,7 +474,7 @@ struct ComposerView: View {
         guard let insertion = lastDictation, !insertion.showingOriginal, let draft else { return }
         lastDictation = nil
         let corrections = EditLearner.corrections(formatted: insertion.formatted, final: draft.body, knownNames: Set(model.acceptedFriends.map(\.displayName)))
-        handle(model.learning.record(corrections, existing: model.dictionary.map(\.entry)))
+        handle(model.learning.record(corrections, existing: model.words.entries))
     }
 
     private func handle(_ actions: [LearningAction]) {
@@ -485,23 +483,17 @@ struct ComposerView: View {
             case .offer(let correction):
                 offer = correction
             case .autoAdd(let entry):
-                Task {
-                    try? await model.api?.saveDictionaryEntry(entry, source: "learned")
-                    await model.refreshDictionary()
-                    model.show("Added “\(entry.written)” to your dictionary", systemImage: "character.book.closed.fill")
-                }
+                model.words.upsert(entry, source: "learned", api: model.api)
+                model.show("Added “\(entry.written)” to your dictionary", systemImage: "character.book.closed.fill")
             }
         }
     }
 
     private func learn(_ correction: Correction) {
-        let entry = LearningLedger.entry(for: correction, existing: model.dictionary.map(\.entry))
+        let entry = LearningLedger.entry(for: correction, existing: model.words.entries)
         offer = nil
         model.learning.markLearned(correction)
-        Task {
-            try? await model.api?.saveDictionaryEntry(entry, source: "learned")
-            await model.refreshDictionary()
-        }
+        model.words.upsert(entry, source: "learned", api: model.api)
     }
 
     // MARK: Photos
@@ -521,81 +513,24 @@ struct ComposerView: View {
         }
     }
 
-    // MARK: Posting
+    // MARK: Saving
 
-    private func post() {
-        guard let draft, let api = model.api else { return }
+    private func saveEntry() {
+        guard let draft else { return }
         checkForCorrections()
         posting = true
         error = nil
+        if draft.savedAt == nil { draft.savedAt = Date() }
+        if model.isSignedIn && draft.circleIDs == nil { draft.circleIDs = lastAudience ?? [] }
+        if draft.composedWith.isEmpty { draft.composedWith = ["typed"] }
+        draft.touch()
+        try? context.save()
+        MemoPlayer.shared.stopAll()
         Task {
-            defer { posting = false }
-            do {
-                var memo: API.PublishRequest.Memo?
-                if let file = draft.memoFileURL {
-                    let path = try await api.uploadMemo(updateID: draft.updateID, fileURL: file)
-                    // Uploaded once: a retry after a later failure doesn't upload it again
-                    draft.memoRemotePath = path
-                    draft.memoFileName = nil
-                    try? FileManager.default.removeItem(at: file)
-                    save()
-                }
-                if let path = draft.memoRemotePath {
-                    memo = .init(storagePath: path, durationMs: draft.memoDurationMs, waveform: draft.memoWaveform,
-                                 transcriptRaw: draft.memoTranscriptRaw, transcriptClean: draft.memoTranscriptClean, engineId: draft.memoEngineID)
-                }
-                var photos: [API.PublishRequest.Photo] = []
-                for (index, item) in draft.photoItems.enumerated() {
-                    if item.hasPrefix("remote:") {
-                        photos.append(.init(storagePath: String(item.dropFirst(7)), position: index, width: nil, height: nil))
-                        continue
-                    }
-                    let url = draft.folder.appending(path: item)
-                    let data = try Data(contentsOf: url)
-                    let size = UIImage(data: data)?.size
-                    let path = try await api.uploadPhoto(updateID: draft.updateID, data: data, index: index)
-                    draft.photoItems[index] = "remote:\(path)"
-                    save()
-                    photos.append(.init(storagePath: path, position: index, width: size.map { Int($0.width) }, height: size.map { Int($0.height) }))
-                }
-                let circles = draft.circleIDs ?? lastAudience ?? []
-                let body = draft.body.trimmingCharacters(in: .whitespacesAndNewlines)
-                try await api.publish(.init(
-                    pId: draft.updateID,
-                    pPrompt: draft.prompt,
-                    pBody: body.isEmpty ? nil : body,
-                    pRawTranscript: draft.rawTranscript,
-                    pComposedWith: draft.composedWith.isEmpty ? ["typed"] : draft.composedWith,
-                    pComposeMs: Int(Date().timeIntervalSince(draft.startedAt) * 1000),
-                    pCircles: circles,
-                    pMemo: memo,
-                    pPhotos: photos
-                ))
-                let names = model.circles.filter { circles.contains($0.id) }.map(\.name)
-                DraftStore.deleteFiles(for: draft.updateID)
-                context.delete(draft)
-                try? context.save()
-                MemoPlayer.shared.stopAll()
-                model.show(editing != nil ? "Saved" : names.isEmpty ? "Saved to your archive" : "Posted to \(names.formatted(.list(type: .and)))")
-                dismiss()
-            } catch {
-                self.error = friendlyMessage(error)
-            }
-        }
-    }
-}
-
-private struct DraftPhoto: View {
-    let draft: Draft
-    let item: String
-
-    var body: some View {
-        if item.hasPrefix("remote:") {
-            StoredPhoto(photo: PhotoInfo(storagePath: String(item.dropFirst(7)), position: 0))
-        } else if let image = UIImage(contentsOfFile: draft.folder.appending(path: item).path(percentEncoded: false)) {
-            Image(uiImage: image).resizable().scaledToFill()
-        } else {
-            Theme.hairline
+            let message = await model.didSave(draft)
+            posting = false
+            model.show(message)
+            dismiss()
         }
     }
 }

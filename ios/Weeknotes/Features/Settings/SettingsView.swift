@@ -1,44 +1,35 @@
+import SwiftData
 import SwiftUI
 import WeeknotesCore
 
-/// Settings (PRD §11, screen 10): name, reminder day and time, time zone, phone, Dictionary,
-/// privacy, account deletion. The bake-off screen is reachable from here (internal).
+/// Settings (PRD §11, screen 10): the weekly reminder, the dictionary, your account (optional),
+/// privacy, and erasing data. The bake-off screen is reachable from here (internal).
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @State private var name = ""
-    @State private var timezone = TimeZone.current.identifier
-    @State private var weekday = 0
-    @State private var time = Date()
-    @State private var remindersOn = true
+    @State private var reminder = LocalReminders.settings
+    @State private var reminderTime = Date()
     @State private var loaded = false
     @State private var confirmDelete = false
+    @State private var confirmErase = false
     @State private var deleting = false
     @State private var error: String?
     @State private var versionTaps = 0
 
     var body: some View {
         Form {
-            Section("You") {
-                TextField("Name", text: $name)
-                    .onSubmit { save(.init(displayName: name.trimmingCharacters(in: .whitespaces))) }
-                    .accessibilityIdentifier("settingsName")
-                TimeZonePicker(identifier: $timezone)
-                NavigationLink {
-                    PhoneSettingsView()
-                } label: {
-                    LabeledContent("Phone number", value: model.profile?.hasVerifiedPhone == true ? "Verified" : "Not added")
-                }
-            }
+            accountSection
 
             Section {
-                Toggle("Weekly reminder", isOn: $remindersOn)
-                if remindersOn {
-                    ReminderPicker(weekday: $weekday, time: $time)
+                Toggle("Weekly reminder", isOn: $reminder.enabled)
+                    .accessibilityIdentifier("reminderToggle")
+                if reminder.enabled {
+                    ReminderPicker(weekday: $reminder.weekday, time: $reminderTime)
                 }
             } header: {
                 Text("Reminder")
             } footer: {
-                Text("Sent only if you haven't posted that week.")
+                Text("A notification on this iPhone, skipped for weeks you've already written.")
             }
 
             Section {
@@ -47,7 +38,7 @@ struct SettingsView: View {
             } header: {
                 Text("Dictation")
             } footer: {
-                Text("Names and words you teach Weeknotes, so dictation spells them right. Your friends' names are included automatically.")
+                Text("Names and words you teach Weeknotes, so dictation spells them right.\(model.isSignedIn ? " Your friends' names are included automatically." : "")")
             }
 
             Section("About") {
@@ -62,11 +53,12 @@ struct SettingsView: View {
             }
 
             Section {
-                Button("Sign out") { Task { await model.signOut() } }
-                Button("Delete account", role: .destructive) { confirmDelete = true }
-                    .disabled(deleting)
+                Button("Erase this iPhone's weeks", role: .destructive) { confirmErase = true }
+                    .accessibilityIdentifier("eraseLocal")
             } footer: {
-                Text("Deleting your account removes your profile, every update, memo, photo, reply and reaction, permanently.")
+                Text(model.isSignedIn
+                     ? "Removes your weeks, memos, photos and dictionary from this iPhone. Your account keeps its backup."
+                     : "Removes your weeks, memos, photos and dictionary from this iPhone. Without an account there's no other copy.")
             }
             if let error { Text(error).foregroundStyle(.red) }
         }
@@ -74,21 +66,65 @@ struct SettingsView: View {
         .paperBackground()
         .navigationTitle("Settings")
         .onAppear(perform: load)
-        .onChange(of: timezone) { if loaded { save(.init(timezone: timezone)) } }
-        .onChange(of: weekday) { if loaded { save(.init(reminderWeekday: weekday)) } }
-        .onChange(of: time) { if loaded { save(.init(reminderTime: Self.timeString(time))) } }
-        .onChange(of: remindersOn) { _, on in
-            if loaded { save(.init(remindersEnabled: on)) }
-            if on { Task { _ = await PushService.shared.requestPermission() } }
+        .onChange(of: reminder) { _, value in saveReminder(value) }
+        .onChange(of: reminderTime) { _, time in
+            let c = Calendar.current.dateComponents([.hour, .minute], from: time)
+            reminder.hour = c.hour ?? 18
+            reminder.minute = c.minute ?? 0
         }
         .onDisappear {
             let trimmed = name.trimmingCharacters(in: .whitespaces)
-            if loaded, !trimmed.isEmpty, trimmed != model.profile?.displayName { save(.init(displayName: trimmed)) }
+            if model.isSignedIn, !trimmed.isEmpty, trimmed != model.profile?.displayName {
+                Task {
+                    try? await model.api?.updateProfile(.init(displayName: trimmed))
+                    await model.refreshProfile()
+                }
+            }
         }
         .confirmationDialog("Delete your account?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("Delete everything", role: .destructive) { deleteAccount() }
+            Button("Delete account", role: .destructive) { deleteAccount() }
         } message: {
-            Text("This can't be undone. Your updates disappear from your friends' feeds too.")
+            Text("Your account, friends, circles, replies and every shared week are deleted, and disappear from your friends' feeds. Your weeks on this iPhone stay.")
+        }
+        .confirmationDialog("Erase this iPhone's weeks?", isPresented: $confirmErase, titleVisibility: .visible) {
+            Button("Erase", role: .destructive) {
+                model.eraseLocalData()
+                model.show("Erased from this iPhone", systemImage: "trash")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var accountSection: some View {
+        switch model.account {
+        case .signedIn:
+            Section("Account") {
+                TextField("Name", text: $name).accessibilityIdentifier("settingsName")
+                NavigationLink {
+                    PhoneSettingsView()
+                } label: {
+                    LabeledContent("Phone number", value: model.profile?.hasVerifiedPhone == true ? "Verified" : "Not added")
+                }
+                Button("Sign out") { Task { await model.signOut() } }
+                Button("Delete account", role: .destructive) { confirmDelete = true }
+                    .disabled(deleting)
+            }
+        case .needsProfile:
+            Section("Account") {
+                Button("Finish setting up your account") { model.accountFlowRequested = true }
+                Button("Sign out") { Task { await model.signOut() } }
+            }
+        case .signedOut:
+            if model.accountsAvailable {
+                Section {
+                    Button("Create an account or sign in") { model.accountFlowRequested = true }
+                        .accessibilityIdentifier("settingsSignIn")
+                } header: {
+                    Text("Account")
+                } footer: {
+                    Text("Optional. An account lets you connect with friends and share weeks, and backs up your weeks.")
+                }
+            }
         }
     }
 
@@ -101,29 +137,18 @@ struct SettingsView: View {
     }
 
     private func load() {
-        guard let profile = model.profile else { return }
-        name = profile.displayName
-        timezone = profile.timezone
-        weekday = profile.reminderWeekday
-        time = Calendar.current.date(from: profile.reminderComponents) ?? Date()
-        remindersOn = profile.remindersEnabled
+        name = model.profile?.displayName ?? ""
+        reminder = LocalReminders.settings
+        reminderTime = Calendar.current.date(from: DateComponents(hour: reminder.hour, minute: reminder.minute)) ?? Date()
         DispatchQueue.main.async { loaded = true }
     }
 
-    static func timeString(_ date: Date) -> String {
-        let c = Calendar.current.dateComponents([.hour, .minute], from: date)
-        return String(format: "%02d:%02d", c.hour ?? 18, c.minute ?? 0)
-    }
-
-    private func save(_ changes: API.ProfileChanges) {
+    private func saveReminder(_ value: ReminderPlan.Settings) {
+        guard loaded else { return }
+        LocalReminders.settings = value
         Task {
-            do {
-                try await model.api?.updateProfile(changes)
-                await model.refreshProfile()
-                error = nil
-            } catch {
-                self.error = friendlyMessage(error)
-            }
+            if value.enabled { _ = await PushService.shared.requestPermission() }
+            await LocalReminders.reschedule(context: model.context)
         }
     }
 
@@ -133,8 +158,15 @@ struct SettingsView: View {
             defer { deleting = false }
             do {
                 try await model.api?.deleteAccount()
-                AppModel.resetLocalState()
+                // This iPhone's weeks stay, as the user's own; they're no longer tied to an account
+                for entry in EntryStore.saved(in: model.context) {
+                    entry.ownerID = nil
+                    entry.circleIDs = nil
+                    entry.needsSync = false
+                }
+                try? model.context.save()
                 await model.signOut()
+                model.show("Account deleted", systemImage: "trash")
             } catch {
                 self.error = friendlyMessage(error)
             }
@@ -191,35 +223,32 @@ private struct PhoneSettingsView: View {
 }
 
 /// Settings → Dictionary: names, nicknames, places, inside jokes, and how they get misheard.
+/// Kept on this iPhone; with an account it's backed up too.
 struct DictionaryView: View {
     @Environment(AppModel.self) private var model
-    @State private var editing: DictionaryRow?
+    @State private var editing: DictionaryStore.Word?
     @State private var adding = false
 
     var body: some View {
         List {
             Section {
-                ForEach(model.dictionary) { row in
-                    Button { editing = row } label: {
+                ForEach(model.words.words) { word in
+                    Button { editing = word } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             HStack {
-                                Text(row.written).foregroundStyle(Theme.ink)
-                                if row.source == "learned" {
+                                Text(word.written).foregroundStyle(Theme.ink)
+                                if word.source == "learned" {
                                     Text("Learned").font(.caption2.weight(.semibold)).foregroundStyle(Theme.accent)
                                 }
                             }
-                            if !row.soundsLike.isEmpty {
-                                Text("Sounds like: \(row.soundsLike.joined(separator: ", "))").font(.caption).foregroundStyle(Theme.secondaryInk)
+                            if !word.soundsLike.isEmpty {
+                                Text("Sounds like: \(word.soundsLike.joined(separator: ", "))").font(.caption).foregroundStyle(Theme.secondaryInk)
                             }
                         }
                     }
                 }
                 .onDelete { offsets in
-                    let rows = offsets.map { model.dictionary[$0] }
-                    Task {
-                        for row in rows { try? await model.api?.deleteDictionaryEntry(row.id) }
-                        await model.refreshDictionary()
-                    }
+                    for word in offsets.map({ model.words.words[$0] }) { model.words.delete(word, api: model.api) }
                 }
                 Button("Add a word", systemImage: "plus") { adding = true }
                     .accessibilityIdentifier("addWord")
@@ -236,19 +265,18 @@ struct DictionaryView: View {
         .scrollContentBackground(.hidden)
         .paperBackground()
         .navigationTitle("Dictionary")
-        .task { await model.refreshDictionary() }
-        .sheet(item: $editing) { row in DictionaryEntryEditor(row: row) }
-        .sheet(isPresented: $adding) { DictionaryEntryEditor(row: nil) }
+        .task { if let api = model.api { await model.words.sync(api: api) } }
+        .sheet(item: $editing) { word in DictionaryEntryEditor(word: word) }
+        .sheet(isPresented: $adding) { DictionaryEntryEditor(word: nil) }
     }
 }
 
 private struct DictionaryEntryEditor: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
-    let row: DictionaryRow?
+    let word: DictionaryStore.Word?
     @State private var written = ""
     @State private var soundsLike = ""
-    @State private var error: String?
 
     var body: some View {
         NavigationStack {
@@ -259,19 +287,20 @@ private struct DictionaryEntryEditor: View {
                 Section {
                     TextField("Jalen, Jay Lynn", text: $soundsLike).autocorrectionDisabled().accessibilityIdentifier("wordSoundsLike")
                 } header: { Text("Sounds like (optional)") } footer: { Text("Ways dictation gets it wrong, separated by commas.") }
-                if let error { Text(error).foregroundStyle(.red) }
             }
-            .navigationTitle(row == nil ? "Add a word" : "Edit word")
+            .navigationTitle(word == nil ? "Add a word" : "Edit word")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }.disabled(written.trimmingCharacters(in: .whitespaces).isEmpty)
+                    Button("Save") { save() }
+                        .disabled(written.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .accessibilityIdentifier("saveWord")
                 }
             }
             .onAppear {
-                written = row?.written ?? ""
-                soundsLike = row?.soundsLike.joined(separator: ", ") ?? ""
+                written = word?.written ?? ""
+                soundsLike = word?.soundsLike.joined(separator: ", ") ?? ""
             }
         }
         .presentationDetents([.medium])
@@ -282,15 +311,7 @@ private struct DictionaryEntryEditor: View {
             written: written.trimmingCharacters(in: .whitespaces),
             soundsLike: soundsLike.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         )
-        Task {
-            do {
-                if let row, row.written != entry.written { try await model.api?.deleteDictionaryEntry(row.id) }
-                try await model.api?.saveDictionaryEntry(entry, source: row?.source ?? "manual")
-                await model.refreshDictionary()
-                dismiss()
-            } catch {
-                self.error = friendlyMessage(error)
-            }
-        }
+        model.words.upsert(entry, source: word?.source ?? "manual", replacing: word?.written, api: model.api)
+        dismiss()
     }
 }

@@ -7,6 +7,8 @@ import { consumeQuota, json, requireUser } from "../_shared/http.ts";
 
 const MODEL = Deno.env.get("FORMAT_MODEL") ?? "claude-haiku-5-5";
 const DAILY_LIMIT = Number(Deno.env.get("FORMAT_DAILY_LIMIT") ?? 300);
+// Signed-out apps use anonymous sessions, which are cheap to create: they get less
+const ANONYMOUS_DAILY_LIMIT = Number(Deno.env.get("FORMAT_ANONYMOUS_DAILY_LIMIT") ?? 100);
 const MAX_CHARS = 8000;
 
 let client: Anthropic | undefined;
@@ -30,7 +32,7 @@ export async function handle(req: Request): Promise<Response> {
 
   const key = Deno.env.get("ANTHROPIC_API_KEY");
   if (!key) return json({ error: "Hosted formatting isn't configured" }, 503);
-  if (!(await consumeQuota(user.id, "format", DAILY_LIMIT))) return json({ error: "Daily formatting limit reached" }, 429);
+  if (!(await consumeQuota(user.id, "format", user.is_anonymous ? ANONYMOUS_DAILY_LIMIT : DAILY_LIMIT))) return json({ error: "Daily formatting limit reached" }, 429);
 
   client ??= new Anthropic({ apiKey: key, timeout: 15_000, maxRetries: 1 });
   try {

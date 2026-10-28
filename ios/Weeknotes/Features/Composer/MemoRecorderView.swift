@@ -7,7 +7,7 @@ import WeeknotesCore
 struct MemoRecorderView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
-    let draft: Draft
+    let draft: Entry
     let onSave: () -> Void
 
     @State private var recorder = MemoRecorder()
@@ -247,6 +247,7 @@ struct MemoRecorderView: View {
         draft.memoTranscriptClean = clean.isEmpty ? nil : clean
         draft.memoEngineID = engineID
         if !draft.composedWith.contains("memo") { draft.composedWith.append("memo") }
+        draft.touch()
         onSave()
         dismiss()
     }

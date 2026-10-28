@@ -1,30 +1,24 @@
 import SwiftUI
 import WeeknotesCore
 
-/// One update in full (PRD §11, screen 3): text, photos, memo player and transcript,
-/// reactions and a private reply. The author also gets share, edit and delete.
+/// A friend's update in full (PRD §11, screen 3): text, photos, memo player and transcript,
+/// reactions and a private reply. Your own weeks open in EntryDetailView.
 struct UpdateDetailView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     let updateID: UUID
     var card: FeedCard?
-    var ownUpdate: UpdateRow?
 
     @State private var update: UpdateRow?
     @State private var reaction: String?
-    @State private var reactions: [ReactionRow] = []
     @State private var showOriginal = false
     @State private var reply = ""
     @State private var sending = false
     @State private var error: String?
-    @State private var shareLink: ShareLinkInfo?
-    @State private var confirmDelete = false
-    @State private var editing = false
     @State private var viewerPhoto: PhotoInfo?
 
     static let reactionChoices = ["❤️", "😂", "🥹", "🔥", "👏", "🫶"]
 
-    var isMine: Bool { (update?.authorId ?? card?.authorId) == model.profile?.id }
     var authorName: String { update?.authorName.nilIfEmpty ?? card?.authorName ?? "" }
 
     var body: some View {
@@ -42,18 +36,9 @@ struct UpdateDetailView: View {
             .padding(.bottom, 40)
         }
         .paperBackground()
-        .navigationTitle(isMine ? "Your week" : authorName)
+        .navigationTitle(authorName)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { if isMine { ownerMenu } }
         .task { await load() }
-        .confirmationDialog("Delete this update?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("Delete update", role: .destructive) { delete() }
-        } message: {
-            Text("It disappears from your archive and your friends' feeds, and its memo and photos are deleted.")
-        }
-        .fullScreenCover(isPresented: $editing, onDismiss: { Task { await load() } }) {
-            if let update { ComposerView(editing: update) }
-        }
         .fullScreenCover(item: $viewerPhoto) { photo in
             PhotoViewer(photos: update?.photos ?? [], start: photo)
         }
@@ -116,12 +101,8 @@ struct UpdateDetailView: View {
             }
         }
 
-        if isMine {
-            ownerFooter(update)
-        } else {
-            reactionsBar(update)
-            replyBox
-        }
+        reactionsBar(update)
+        replyBox
     }
 
     private func reactionsBar(_ update: UpdateRow) -> some View {
@@ -174,40 +155,6 @@ struct UpdateDetailView: View {
         .padding(.top, 6)
     }
 
-    private func ownerFooter(_ update: UpdateRow) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            let names = model.circles.filter { update.audienceIDs.contains($0.id) }.map(\.name)
-            Label(names.isEmpty ? "Only you can see this (archive)" : "Shared with \(names.formatted(.list(type: .and)))", systemImage: names.isEmpty ? "lock" : "person.3")
-                .font(.subheadline)
-                .foregroundStyle(Theme.secondaryInk)
-            if !reactions.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Reactions").font(.footnote.weight(.semibold)).foregroundStyle(Theme.secondaryInk)
-                    ForEach(reactions, id: \.userId) { row in
-                        Text("\(row.emoji)  \(row.profiles?.displayName ?? "A friend")").font(.subheadline)
-                    }
-                }
-            }
-            ShareLinkButton(update: update)
-        }
-        .card()
-    }
-
-    @ToolbarContentBuilder
-    private var ownerMenu: some ToolbarContent {
-        ToolbarItem(placement: .topBarTrailing) {
-            Menu {
-                if update?.weekStart == model.currentWeek {
-                    Button("Edit", systemImage: "pencil") { editing = true }
-                }
-                Button("Delete", systemImage: "trash", role: .destructive) { confirmDelete = true }
-            } label: {
-                Image(systemName: "ellipsis")
-            }
-            .accessibilityLabel("More")
-        }
-    }
-
     private func load() async {
         guard let api = model.api else { return }
         do {
@@ -218,11 +165,7 @@ struct UpdateDetailView: View {
             }
             update = row
             reaction = card?.myReaction
-            if row.authorId == model.profile?.id {
-                reactions = (try? await api.reactions(for: row.id)) ?? []
-            } else if card?.readAt == nil {
-                await api.markRead(row.id)
-            }
+            if card?.readAt == nil { await api.markRead(row.id) }
         } catch {
             self.error = friendlyMessage(error)
         }
@@ -246,31 +189,20 @@ struct UpdateDetailView: View {
         }
     }
 
-    private func delete() {
-        guard let update, let api = model.api else { return }
-        Task {
-            do {
-                try await api.deleteUpdate(update)
-                model.show("Update deleted", systemImage: "trash")
-                dismiss()
-            } catch {
-                self.error = friendlyMessage(error)
-            }
-        }
-    }
 }
 
 /// Makes (or reuses) a share link for one of my updates and opens the share sheet. The link
 /// works without an account, and people who join from it are added to the chosen circle.
 struct ShareLinkButton: View {
     @Environment(AppModel.self) private var model
-    let update: UpdateRow
+    let updateID: UUID
+    let audienceIDs: [UUID]
     @State private var link: ShareLinkInfo?
     @State private var circle: UUID?
     @State private var error: String?
     @State private var loading = false
 
-    var audienceCircles: [CircleRow] { model.circles.filter { update.audienceIDs.contains($0.id) } }
+    var audienceCircles: [CircleRow] { model.circles.filter { audienceIDs.contains($0.id) } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -310,7 +242,7 @@ struct ShareLinkButton: View {
         Task {
             defer { loading = false }
             do {
-                link = try await model.api?.shareLink(for: update.id, circle: circle ?? audienceCircles.first?.id)
+                link = try await model.api?.shareLink(for: updateID, circle: circle ?? audienceCircles.first?.id)
             } catch {
                 self.error = friendlyMessage(error)
             }

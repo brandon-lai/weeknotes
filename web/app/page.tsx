@@ -14,10 +14,10 @@ export default function Home() {
       </header>
 
       <section className="hero">
-        <h1>Once a week, tell your friends how it went.</h1>
+        <h1>Once a week, write down how it went.</h1>
         <p>
-          Post one update and it reaches every circle you choose: college friends, family, the book club.
-          No more pasting the same message into five group chats, and every week saves to your own archive.
+          A few minutes every week, kept on your phone. No account needed. When you want to, share a week with
+          the circles you choose (college friends, family, the book club) instead of pasting it into five group chats.
         </p>
         <div className="actions">
           {store ? (
@@ -46,8 +46,8 @@ export default function Home() {
 
       <ul className="principles">
         <li><strong>Once a week, on purpose.</strong><span>One update per person per week. About five minutes to write, ten to catch up on everyone.</span></li>
-        <li><strong>Write for yourself first.</strong><span>Every update saves to your archive, even if you share it with no one.</span></li>
-        <li><strong>Friends only, chosen per circle.</strong><span>You decide who sees each update. No public profiles, no followers, no ranking, no ads.</span></li>
+        <li><strong>Write for yourself first.</strong><span>Every week saves to your archive on your phone. No account, no sign-up.</span></li>
+        <li><strong>Friends when you want them.</strong><span>Create an account to connect with friends and choose who sees each week. No public profiles, no followers, no ranking, no ads.</span></li>
         <li><strong>A finite feed.</strong><span>When you've read or heard everyone, the app says you're caught up.</span></li>
       </ul>
 

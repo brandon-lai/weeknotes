@@ -7,7 +7,13 @@ import WeeknotesCore
 @Observable
 final class API {
     let client: SupabaseClient
+    /// The session's user: a real account, or an anonymous session used only for the hosted
+    /// formatting and transcription fallbacks while signed out.
     private(set) var userID: UUID?
+    private(set) var isAnonymous = false
+
+    /// The signed-in account (nil when signed out or only anonymous).
+    var accountID: UUID? { isAnonymous ? nil : userID }
     @ObservationIgnored private var signedURLs: [String: (url: URL, expires: Date)] = [:]
 
     init?() {
@@ -57,38 +63,57 @@ final class API {
 
     // MARK: Session
 
+    /// Restores a stored session. Returns the account id, or nil when signed out (an anonymous
+    /// session doesn't count as signed in).
     func restoreSession() async -> UUID? {
         if let session = try? await client.auth.session, !session.isExpired {
-            userID = session.user.id
+            adopt(session.user)
         } else if let session = try? await client.auth.refreshSession() {
-            userID = session.user.id
+            adopt(session.user)
         } else {
             userID = nil
+            isAnonymous = false
         }
-        return userID
+        return accountID
+    }
+
+    private func adopt(_ user: User) {
+        userID = user.id
+        isAnonymous = user.isAnonymous
+    }
+
+    /// A token for the hosted fallbacks. Signed out, this starts an anonymous session: no
+    /// account, no profile, and the server keeps it out of everything social.
+    func hostedToken() async -> String? {
+        if let session = try? await client.auth.session, !session.isExpired { return session.accessToken }
+        if let session = try? await client.auth.refreshSession() { return session.accessToken }
+        guard let session = try? await client.auth.signInAnonymously() else { return nil }
+        adopt(session.user)
+        return session.accessToken
     }
 
     /// Native Sign in with Apple: the app gets an identity token from Apple, Supabase checks it.
     func signInWithApple(idToken: String, nonce: String) async throws {
         let session = try await client.auth.signInWithIdToken(credentials: .init(provider: .apple, idToken: idToken, nonce: nonce))
-        userID = session.user.id
+        adopt(session.user)
     }
 
     /// Developer sign-in for the seeded local accounts. Not compiled into Release builds.
     func signIn(email: String, password: String) async throws {
         let session = try await client.auth.signIn(email: email, password: password)
-        userID = session.user.id
+        adopt(session.user)
     }
 
     /// Developer sign-up for local accounts (the local stack doesn't confirm emails).
     func signUp(email: String, password: String) async throws {
         let response = try await client.auth.signUp(email: email, password: password)
-        userID = response.user.id
+        adopt(response.user)
     }
 
     func signOut() async {
         try? await client.auth.signOut()
         userID = nil
+        isAnonymous = false
         signedURLs = [:]
     }
 
@@ -282,6 +307,9 @@ final class API {
         let pCircles: [UUID]
         let pMemo: Memo?
         let pPhotos: [Photo]
+        /// Backfill: the week and time a week was written, for weeks saved before signing in.
+        var pWeekStart: LocalDate? = nil
+        var pPostedAt: Date? = nil
 
         /// Every parameter, nulls included: PostgREST picks the function by the names it's
         /// given, so a missing `p_prompt` means "no such function".
@@ -296,10 +324,12 @@ final class API {
             try c.encode(pCircles, forKey: .pCircles)
             try c.encode(pMemo, forKey: .pMemo)
             try c.encode(pPhotos, forKey: .pPhotos)
+            try c.encode(pWeekStart?.iso, forKey: .pWeekStart)
+            try c.encode(pPostedAt, forKey: .pPostedAt)
         }
 
         enum CodingKeys: String, CodingKey {
-            case pId, pPrompt, pBody, pRawTranscript, pComposedWith, pComposeMs, pCircles, pMemo, pPhotos
+            case pId, pPrompt, pBody, pRawTranscript, pComposedWith, pComposeMs, pCircles, pMemo, pPhotos, pWeekStart, pPostedAt
         }
     }
 
@@ -314,6 +344,12 @@ final class API {
         let photos = update.photos.map(\.storagePath)
         if !photos.isEmpty { _ = try? await client.storage.from("photos").remove(paths: photos) }
         try await client.from("updates").delete().eq("id", value: update.id).execute()
+    }
+
+    func deleteUpdate(id: UUID, memoPath: String?, photoPaths: [String]) async throws {
+        if let memoPath { _ = try? await client.storage.from("memos").remove(paths: [memoPath]) }
+        if !photoPaths.isEmpty { _ = try? await client.storage.from("photos").remove(paths: photoPaths) }
+        try await client.from("updates").delete().eq("id", value: id).execute()
     }
 
     func shareLink(for updateID: UUID, circle: UUID?) async throws -> ShareLinkInfo {
@@ -434,6 +470,7 @@ final class API {
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw APIError.server("Couldn't delete your account. Try again.") }
         try? await client.auth.signOut()
         userID = nil
+        isAnonymous = false
     }
 }
 

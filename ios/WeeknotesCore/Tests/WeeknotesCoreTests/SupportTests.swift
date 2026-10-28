@@ -220,3 +220,33 @@ struct LegacySpeechTests {
         #expect(segments.finish().0 == "We got dinner at 8.")
     }
 }
+
+@Suite("Local reminders")
+struct ReminderPlanTests {
+    let toronto = TimeZone(identifier: "America/Toronto")!
+    func date(_ iso: String) -> Date { ISO8601DateFormatter().date(from: iso)! }
+
+    @Test func nextSundaysAtSixLocal() {
+        // Monday Oct 26, 2026, 15:00 Toronto
+        let plan = ReminderPlan.dates(.init(), after: date("2026-10-26T19:00:00Z"), in: toronto, logged: [], count: 3)
+        #expect(plan == [date("2026-11-01T23:00:00Z"), date("2026-11-08T23:00:00Z"), date("2026-11-15T23:00:00Z")],
+                "DST ends Nov 1: 18:00 EST is 23:00Z")
+    }
+
+    @Test func skipsWeeksAlreadyLogged() {
+        // The week of Oct 26 is logged, so its Sunday (Nov 1) is skipped
+        let plan = ReminderPlan.dates(.init(), after: date("2026-10-26T19:00:00Z"), in: toronto, logged: [LocalDate("2026-10-26")!], count: 2)
+        #expect(plan == [date("2026-11-08T23:00:00Z"), date("2026-11-15T23:00:00Z")])
+    }
+
+    @Test func aMondayMorningReminderIsForTheWeekThatJustEnded() {
+        // Monday 09:00 reminders belong to the previous week (before the noon cutoff)
+        let settings = ReminderPlan.Settings(weekday: 1, hour: 9, minute: 0)
+        let plan = ReminderPlan.dates(settings, after: date("2026-10-26T19:00:00Z"), in: toronto, logged: [LocalDate("2026-10-26")!], count: 1)
+        #expect(plan == [date("2026-11-09T14:00:00Z")], "Nov 2 09:00 is for the week of Oct 26, which is logged")
+    }
+
+    @Test func offMeansNone() {
+        #expect(ReminderPlan.dates(.init(enabled: false), after: Date(), in: toronto, logged: []).isEmpty)
+    }
+}

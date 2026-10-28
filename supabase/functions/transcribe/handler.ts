@@ -5,6 +5,7 @@ import { consumeQuota, json, requireUser } from "../_shared/http.ts";
 
 const MODEL = Deno.env.get("OPENAI_TRANSCRIBE_MODEL") ?? "gpt-4o-transcribe";
 const DAILY_LIMIT = Number(Deno.env.get("TRANSCRIBE_DAILY_LIMIT") ?? 30);
+const ANONYMOUS_DAILY_LIMIT = Number(Deno.env.get("TRANSCRIBE_ANONYMOUS_DAILY_LIMIT") ?? 10);
 const MAX_BYTES = 5 * 1024 * 1024;
 
 export async function handle(req: Request): Promise<Response> {
@@ -26,7 +27,7 @@ export async function handle(req: Request): Promise<Response> {
   // Whisper-style glossary: names to spell right, most important last
   const prompt = String(form.get("prompt") ?? "").slice(0, 800);
 
-  if (!(await consumeQuota(user.id, "transcribe", DAILY_LIMIT))) return json({ error: "Daily transcription limit reached" }, 429);
+  if (!(await consumeQuota(user.id, "transcribe", user.is_anonymous ? ANONYMOUS_DAILY_LIMIT : DAILY_LIMIT))) return json({ error: "Daily transcription limit reached" }, 429);
 
   const upstream = new FormData();
   upstream.set("file", file, file.name || "memo.m4a");

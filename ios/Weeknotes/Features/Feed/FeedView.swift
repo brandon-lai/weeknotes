@@ -6,36 +6,39 @@ import WeeknotesCore
 /// posted, unread first, and "You're caught up" at the end.
 struct FeedView: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.modelContext) private var context
+    @Query private var entries: [Entry]
     @State private var cards: [FeedCard] = []
-    @State private var mine: UpdateRow?
     @State private var loaded = false
     @State private var error: String?
     @State private var path = NavigationPath()
 
     var week: LocalDate { model.currentWeek }
+    var mine: Entry? { entries.first { $0.weekStart == week.iso } }
     var unread: [FeedCard] { cards.filter(\.isUnread) }
-    var draft: Draft? { DraftStore.draft(for: week, in: context) }
-    var lockedUntilPosted: Bool { model.flags.requirePostToRead && mine == nil }
+    var lockedUntilPosted: Bool { model.flags.requirePostToRead && mine?.isSaved != true }
 
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 16) {
                     header
-                    MyWeekCard(mine: mine, draft: draft, onWrite: { model.composerRequested = true })
-                    if let error {
-                        ErrorBanner(message: error) { Task { await load() } }
-                    }
-                    if lockedUntilPosted && !cards.isEmpty {
-                        EmptyStateView(
-                            title: "\(cards.count) \(cards.count == 1 ? "friend has" : "friends have") posted",
-                            message: "Post your week to read theirs.",
-                            systemImage: "lock.open"
-                        )
-                        .card()
-                    } else {
-                        friendCards
+                    MyWeekCard(entry: mine, onWrite: { model.composerRequested = true })
+                    if model.isSignedIn {
+                        if let error {
+                            ErrorBanner(message: error) { Task { await load() } }
+                        }
+                        if lockedUntilPosted && !cards.isEmpty {
+                            EmptyStateView(
+                                title: "\(cards.count) \(cards.count == 1 ? "friend has" : "friends have") posted",
+                                message: "Write your week to read theirs.",
+                                systemImage: "lock.open"
+                            )
+                            .card()
+                        } else {
+                            friendCards
+                        }
+                    } else if model.accountsAvailable {
+                        ConnectCard()
                     }
                 }
                 .padding(.horizontal, 16)
@@ -44,7 +47,10 @@ struct FeedView: View {
             .paperBackground()
             .refreshable { await load() }
             .navigationDestination(for: UUID.self) { id in
-                UpdateDetailView(updateID: id, card: cards.first { $0.updateId == id } ?? nil, ownUpdate: id == mine?.id ? mine : nil)
+                UpdateDetailView(updateID: id, card: cards.first { $0.updateId == id })
+            }
+            .navigationDestination(for: String.self) { iso in
+                if let entry = entries.first(where: { $0.weekStart == iso }) { EntryDetailView(entry: entry) }
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -56,7 +62,7 @@ struct FeedView: View {
                     .accessibilityLabel("Settings")
                 }
             }
-            .task { await load() }
+            .task(id: model.isSignedIn) { await load() }
             .onChange(of: model.composerRequested) { _, open in
                 if !open { Task { await load() } }
             }
@@ -84,8 +90,8 @@ struct FeedView: View {
             EmptyStateView(
                 title: model.acceptedFriends.isEmpty ? "Bring your friends" : "Nobody's posted yet",
                 message: model.acceptedFriends.isEmpty
-                    ? "Weeknotes is better with the people you'd text anyway. Post your week, then share the link in your group chat."
-                    : "Friends' updates for this week will show up here.",
+                    ? "Weeknotes is better with the people you'd text anyway. Share a week, then send its link to your group chat."
+                    : "Friends' weeks will show up here.",
                 systemImage: model.acceptedFriends.isEmpty ? "person.2.wave.2" : "cup.and.saucer",
                 actionTitle: model.acceptedFriends.isEmpty ? "Find friends" : nil,
                 action: { model.selectedTab = .people }
@@ -112,14 +118,15 @@ struct FeedView: View {
     }
 
     func load() async {
-        guard let api = model.api else { return }
+        guard model.isSignedIn, let api = model.api else {
+            cards = []
+            loaded = true
+            return
+        }
         do {
-            async let feed = api.feed()
-            async let own = api.myUpdate(for: week)
-            let (feedCards, myUpdate) = try await (feed, own)
+            let feed = try await api.feed()
             withAnimation {
-                cards = feedCards
-                mine = myUpdate
+                cards = feed
                 error = nil
             }
         } catch {
@@ -127,6 +134,27 @@ struct FeedView: View {
         }
         loaded = true
         await model.refreshUnread()
+    }
+}
+
+/// Signed out: friends are one tap away, not a requirement.
+private struct ConnectCard: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Share your weeks with friends", systemImage: "person.2.wave.2")
+                .font(Theme.headingFont)
+                .foregroundStyle(Theme.ink)
+            Text("Create a free account to connect with friends, share weeks with the circles you choose, and read theirs. Your weeks stay private unless you share them.")
+                .font(.subheadline)
+                .foregroundStyle(Theme.secondaryInk)
+            Button(model.account == .needsProfile ? "Finish setting up" : "Connect with friends") { model.accountFlowRequested = true }
+                .glassProminentButton()
+                .padding(.top, 2)
+                .accessibilityIdentifier("connectCard")
+        }
+        .card()
     }
 }
 
@@ -148,30 +176,29 @@ struct CaughtUpView: View {
     }
 }
 
-/// The top card: write your week, continue the draft, or see what you posted.
+/// The top card: write your week, continue the draft, or see what you wrote.
 private struct MyWeekCard: View {
     @Environment(AppModel.self) private var model
-    let mine: UpdateRow?
-    let draft: Draft?
+    let entry: Entry?
     let onWrite: () -> Void
 
-    var audienceNames: String {
-        guard let mine else { return "" }
-        let names = model.circles.filter { mine.audienceIDs.contains($0.id) }.map(\.name)
-        return names.isEmpty ? "Only you (archive)" : names.formatted(.list(type: .and))
+    var sharedWith: String {
+        let names = model.circles.filter { (entry?.circleIDs ?? []).contains($0.id) }.map(\.name)
+        if !model.isSignedIn { return "Just for you" }
+        return names.isEmpty ? "Only you" : "Shared with \(names.formatted(.list(type: .and)))"
     }
 
     var body: some View {
-        if let mine {
-            NavigationLink(value: mine.id) {
+        if let entry, entry.isSaved {
+            NavigationLink(value: entry.weekStart) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("You posted \(mine.postedAt.friendlyPosted)", systemImage: "checkmark.circle.fill")
+                    Label("You wrote your week \((entry.savedAt ?? Date()).friendlyPosted)", systemImage: "checkmark.circle.fill")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Theme.accent)
-                    if let body = mine.bodyText ?? mine.voiceMemos?.transcript {
-                        Text(body).font(Theme.body(16)).foregroundStyle(Theme.ink).lineLimit(2)
+                    if let preview = entry.preview {
+                        Text(preview).font(Theme.body(16)).foregroundStyle(Theme.ink).lineLimit(2)
                     }
-                    Text("Shared with \(audienceNames)").font(.caption).foregroundStyle(Theme.secondaryInk)
+                    Text(sharedWith).font(.caption).foregroundStyle(Theme.secondaryInk)
                 }
                 .card()
             }
@@ -180,11 +207,11 @@ private struct MyWeekCard: View {
         } else {
             Button(action: onWrite) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text(draft?.hasContent == true ? "Continue your update" : "Your week is ready to write")
+                    Text(entry?.hasContent == true ? "Continue your week" : "Your week is ready to write")
                         .font(Theme.headingFont)
                         .foregroundStyle(Theme.ink)
-                    if let draft, draft.hasContent {
-                        Text(draft.body.isEmpty ? "Voice memo recorded" : draft.body)
+                    if let entry, entry.hasContent {
+                        Text(entry.preview ?? "Voice memo recorded")
                             .font(Theme.body(15)).foregroundStyle(Theme.secondaryInk).lineLimit(2)
                     } else {
                         Text(Prompts.suggestions(for: model.currentWeek, count: 1).first ?? "")

@@ -1,6 +1,6 @@
 # Weeknotes
 
-**A friends-only iOS app where, once a week, you log an update about your week and it shows up in the feed of every friend and group you choose.** Type it, dictate it, or record a voice memo; post once instead of pasting the same message into several group chats; every week saves to your own archive.
+**A weekly journal for iOS that becomes a friends-only feed when you want it to.** Once a week you log how it went: type it, dictate it, or record a voice memo. No account needed; your weeks live on your phone. Create an account and you can connect with friends, group them into circles, and share each week with the circles you choose, posting once instead of pasting into several group chats.
 
 The full brief is [`PRD.md`](./PRD.md). "Weeknotes" is the working name (PRD §15 left it open).
 
@@ -12,21 +12,23 @@ The full brief is [`PRD.md`](./PRD.md). "Weeknotes" is the working name (PRD §1
 
 | Area | State |
 | --- | --- |
-| **iOS app** (SwiftUI, **iOS 18+**, best on iOS 26) | All 11 screens in PRD §11: onboarding, this week's feed, update detail, composer, memo recorder, audience picker, people and circles, archive, replies inbox and threads, settings with the dictionary, and the internal bake-off. It builds in Debug (simulator) and Release (device). |
+| **No account needed** | First launch is a welcome and an optional weekly reminder, then writing. Weeks, drafts, memos, photos and the dictionary are kept on the phone. Reminders are local notifications. Dictation cleanup works signed out (on device, or the hosted fallback through an anonymous session). |
+| **Account (optional)** | Sign in with Apple from the Friends tab, Settings, a share link, or the composer. It adds friends, circles, sharing, the friends feed, replies and share links, and backs up every week privately (weeks written before signing in keep their dates). Weeks from your other devices come down on sign-in. |
+| **iOS app** (SwiftUI, **iOS 18+**, best on iOS 26) | All 11 screens in PRD §11: welcome and account setup, this week, update detail, composer, memo recorder, audience picker, people and circles, archive, replies inbox and threads, settings with the dictionary, and the internal bake-off. It builds in Debug (simulator) and Release (device). |
 | **Dictation pipeline** | All five stages. Stage 1 runs on Apple SpeechAnalyzer: `SpeechTranscriber`, or `DictationTranscriber` with friends' names as contextual strings. Stages 2, 3 and 5 are plain code. Stage 4 uses Apple Foundation Models on device, with Claude Haiku 5.5 as the hosted fallback. **Both formatters pass all 14 golden cases.** |
 | **Voice memos** | AAC, mono, 64 kbps, 5-minute cap, pause and resume, a live waveform, and a 100-value waveform summary. Transcription is on device, with OpenAI as the fallback. Memos upload to private storage and play inline at 1×/1.5×/2× with lock-screen controls. Listening progress is tracked. |
 | **Friends and circles** | Contact matching sends only hashed phone numbers, compared server-side against a peppered hash of the *verified* phone. There are friend requests, and circles can be created, edited and deleted. |
 | **Posting and feed** | Updates go to circles or stay archive-only, defaulting to last week's circles. There are reactions, private replies, read and listen tracking, and "You're caught up". |
-| **Reminders** | pg_cron runs every 15 minutes and calls the `reminders` Edge Function, which sends APNs pushes. **Sending needs your APNs key.** Until then the function says "APNs is not configured" and sends nothing. |
+| **Reminders** | Local notifications, planned eight weeks ahead and skipping weeks already written (`ReminderPlan`, unit tested). No account, server or APNs key needed. The server's APNs reminder function is still in the repo and tested, but no longer scheduled. |
 | **Share links** | Token links resolve through the `share` Edge Function, with signed media URLs that expire with the link. The Next.js reader shows the text, photos and memo player. People who join from a link are connected to the author and added to that circle. |
 | **Bake-off (M3)** | WhisperKit (large-v3 turbo) and OpenAI's hosted model are implemented behind the same protocol as Apple's engines. The internal screen runs one recording through every engine and both formatters, scores word error rate and names, and exports CSV and JSON. **The 20 real recordings are yours to make.** |
-| **Stubbed** | Sign in with Apple and push only work with your Apple developer configuration. Phone verification needs an SMS provider in production. Locally both use Supabase's test OTP and a Developer sign-in that isn't compiled into Release builds. |
+| **Stubbed** | Sign in with Apple only works with your Apple developer configuration. Phone verification needs an SMS provider in production. Locally both use Supabase's test OTP and a Developer sign-in that isn't compiled into Release builds. |
 
 ## Acceptance criteria (PRD §16) and how each was verified
 
 | Milestone | Status | Evidence |
 | --- | --- | --- |
-| **M0**: sign in, set name, time zone and reminder time; RLS tests pass | ✅ | UI test `testOnboardingNewAccount`, plus 61 pgTAP access tests (`supabase/tests/database/access.test.sql`). Sign in with Apple itself needs a device and your Apple config. Tests use Developer sign-in. |
+| **M0**: sign in, set name, time zone and reminder time; RLS tests pass | ✅ (now optional) | UI tests `testFirstRunWritesAWeekWithoutAnAccount`, `testNewAccountSetup`, `testSigningInBacksUpWeeksWrittenWithoutAnAccount`, plus 61 pgTAP access tests (`supabase/tests/database/access.test.sql`). Sign in with Apple itself needs a device and your Apple config. Tests use Developer sign-in. |
 | **M1**: 14 golden cases on both formatters | ✅ | `GoldenSetTests`: on-device 14/14 (stable across runs on this Mac), hosted 14/14 (three runs in a row). |
 | **M1**: spoken commands ("the period of time" stays words) and fuzzy dictionary | ✅ | `SpokenCommandTests`, `DictionaryTests`, plus stage 1 → 2 on real speech audio (`SpeechEngineTests`). |
 | **M1**: live text, formatted within 1.5 s of stop for 60 s | ✅ on Mac, ❓ on iPhone | `LatencyTests`: a 56 s, 192-word dictation, with formatted text **1.05 s** after stop on this Mac. The iPhone number needs a device. |
@@ -36,12 +38,19 @@ The full brief is [`PRD.md`](./PRD.md). "Weeknotes" is the working name (PRD §1
 | **M2**: 5-minute memo records, uploads, transcribes, plays from another account with transcript | ✅ | UI test `testMemoPlaysBackFromAnotherAccount` with a 4:58 spoken fixture, transcribed on device (Apple dictation model, 4,470 characters) and played from Ana's account. |
 | **M3**: bake-off can be run and exported | ✅ built, ❓ run | The screen and engines exist and export works. The Apple engines are tested on real audio. **WhisperKit has never run** (it's a 632 MB download on first use). |
 | **M4**: two accounts find each other from contacts, become friends, share a circle | ✅ | UI test `testFindFriendFromContactsThenCircle` covers phone verification with a code, the iOS 18+ contacts access sheet, the match, the request, accept, and a new circle. Also pgTAP "contacts match verified phones only". |
-| **M5**: posted to one circle → members see it, a friend outside it doesn't | ✅ | UI test `testPostToOneCircleIsVisibleOnlyToItsMembers`, plus pgTAP visibility tests and a storage test where a friend outside the circle can't sign a URL for the files. |
+| **M5**: posted to one circle → members see it, a friend outside it doesn't | ✅ | UI test `testShareToOneCircleIsVisibleOnlyToItsMembers`, plus pgTAP visibility tests and a storage test where a friend outside the circle can't sign a URL for the files. |
 | **M6**: replies and archive | ✅ | Screenshot tour, plus pgTAP replies tests (participants only, friends only, unread counts). |
-| **M7**: reminder within 15 minutes, none after posting | ✅ against a mock APNs | `supabase/tests/functions.test.ts` checks one ES256-signed push, never two, none for anyone who posted, and dead tokens removed. pg_cron → pg_net → function was verified on the local stack. Real delivery needs your APNs key. |
+| **M7**: reminder at the chosen time, none after posting | ✅ (now local) | `ReminderPlanTests`: the next reminders at the local time across a DST change, skipping weeks already written, Monday-morning reminders counting for the week that ended. The app plans them again on every save. (The original APNs path still passes `functions.test.ts` but isn't scheduled.) |
 | **M8**: logged-out mobile browser shows the update and plays the memo; an expired link is friendly | ✅ | Rendered at 390 px against real share links on the local stack: three photos, memo playback, "This link has expired". Production `/u/demo` plays too. |
 
 ## Decisions (and why)
+
+**Account optional (a change from the PRD, requested after the build).** The core purpose is logging your week; friends come after. So:
+- The phone is the source of truth for your own weeks (`Entry` in SwiftData). The archive works offline and without an account.
+- An account backs every week up privately and shares the ones you choose. On sign-in, weeks written before the account upload with their original week and time (`publish_update` takes `p_week_start`/`p_posted_at`; the server only accepts a Monday no later than the current week, and no future time). Weeks written on other devices come down.
+- Signed out, the app still needs the hosted formatter on iPhones without Apple Intelligence (and on iOS 18). It gets an anonymous Supabase session for that, with lower quotas (100 formats and 10 transcriptions a day). RLS keeps anonymous users out of everything social: they can't create a profile, so every social table is out of reach, and they can't upload files (`local_first.test.sql`).
+- Reminders became local notifications, because they have to work without an account. That also removed the APNs key and the push entitlement from the launch list.
+- Deleting the account keeps this iPhone's weeks (they're yours); "Erase this iPhone's weeks" removes them.
 
 **Formatting on device.** The PRD's prompt alone got the ~3B on-device model to 3/14 golden cases: it copied words from the inline examples ("honestly", "finally"), added preambles, and dropped markers. Three changes got it to 14/14 without touching the rules:
 
@@ -77,8 +86,6 @@ The hosted model keeps the PRD prompt verbatim (`supabase/functions/_shared/form
 **Late arrivals.** The feed is "this week" in *your* time zone, which would hide a friend's Sunday-night post on Monday afternoon. Last week's updates you haven't read stay in the feed, labeled "Last week", for four days.
 
 **Joining from a link** (PRD §10) connects you to the inviter and adds you to the link's circle, as the PRD says. Links expire after 30 days (`app_config.share_link_days`) and are never indexed or cached, which limits how far a forwarded link can travel.
-
-**Reminder window.** A reminder is sent in the first 15-minute run after the user's local time, and is idempotent per week through `reminder_log`. Due users are looked up within the past hour, so one failed cron run is retried instead of lost.
 
 **Deleting an update deletes its files.** The app removes the files, and a trigger also queues them, so the hourly `sweep` function deletes anything a crash left behind. This was verified locally.
 
@@ -161,8 +168,7 @@ These need your accounts, your money or your judgment.
    supabase link --project-ref <ref>
    supabase db push
    supabase functions deploy format transcribe share reminders sweep delete-account
-   supabase secrets set ANTHROPIC_API_KEY=… OPENAI_API_KEY=… CRON_SECRET=$(openssl rand -hex 32) \
-     APNS_KEY_ID=… APNS_TEAM_ID=KT2Y8F24DZ APNS_TOPIC=com.blai.weeknotes APNS_PRIVATE_KEY="$(cat AuthKey_XXXX.p8)"
+   supabase secrets set ANTHROPIC_API_KEY=… OPENAI_API_KEY=… CRON_SECRET=$(openssl rand -hex 32)
    ```
    Then point pg_cron at the functions:
    ```sql
@@ -171,12 +177,12 @@ These need your accounts, your money or your judgment.
    ```
    In the dashboard:
    - Enable the **Apple** provider with client ID `com.blai.weeknotes`.
+   - Enable **anonymous sign-ins** (signed-out apps use them for the hosted cleanup). Consider turning on CAPTCHA protection for them, since anyone can create one.
    - Enable **phone** with an SMS provider such as Twilio, and turn on **Confirm phone changes**. Contact matching depends on verified numbers.
 
    Then run the security advisor and fix anything it flags.
 2. **Apple Developer.**
-   - Let Xcode register `com.blai.weeknotes` on team KT2Y8F24DZ with Sign in with Apple, Push Notifications and Associated Domains (`applinks:weeknotes-app.vercel.app`). A first device build with automatic signing does it.
-   - Create an APNs key (.p8) for the secrets above.
+   - Let Xcode register `com.blai.weeknotes` on team KT2Y8F24DZ with Sign in with Apple and Associated Domains (`applinks:weeknotes-app.vercel.app`). A first device build with automatic signing does it. No push capability is needed.
 3. **iOS Release config.** Set the `SUPABASE_URL` and `SUPABASE_ANON_KEY` build settings for **Release** in the Weeknotes target. Without them, the app shows "Weeknotes isn't set up".
 4. **Vercel env, then push to redeploy.**
    - `SUPABASE_URL` and `SUPABASE_ANON_KEY` turn on real share links.
@@ -185,7 +191,7 @@ These need your accounts, your money or your judgment.
    - dictation latency on a recent iPhone (M1's 1.5 s)
    - a device without Apple Intelligence (hosted fallback)
    - Sign in with Apple
-   - a real reminder push
+   - a real reminder notification
    - a share link opening the app (universal link)
    - lock-screen memo playback
    - contacts on a real address book
